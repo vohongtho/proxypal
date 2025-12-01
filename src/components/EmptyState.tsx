@@ -103,12 +103,12 @@ export function GettingStartedEmptyState(props: {
   proxyRunning: boolean;
 }) {
   return (
-    <div class="p-6 rounded-2xl bg-gradient-to-br from-brand-50 to-purple-50 dark:from-brand-900/20 dark:to-purple-900/20 border border-brand-200 dark:border-brand-800 animate-fade-in">
-      <div class="flex items-start gap-4">
+    <div class="p-4 sm:p-6 rounded-2xl bg-gradient-to-br from-brand-50 to-purple-50 dark:from-brand-900/20 dark:to-purple-900/20 border border-brand-200 dark:border-brand-800 animate-fade-in">
+      <div class="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
         {/* Icon */}
-        <div class="w-12 h-12 rounded-xl bg-brand-500 flex items-center justify-center flex-shrink-0">
+        <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-brand-500 flex items-center justify-center flex-shrink-0">
           <svg
-            class="w-6 h-6 text-white"
+            class="w-5 h-5 sm:w-6 sm:h-6 text-white"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -127,12 +127,12 @@ export function GettingStartedEmptyState(props: {
           <h3 class="font-semibold text-gray-900 dark:text-gray-100 mb-1">
             Welcome to ProxyPal!
           </h3>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-3 sm:mb-4">
             Get started in 3 easy steps:
           </p>
 
           {/* Steps */}
-          <div class="space-y-3">
+          <div class="space-y-2.5 sm:space-y-3">
             <StepItem
               number={1}
               title="Start the proxy"

@@ -49,16 +49,16 @@ export function WelcomePage() {
   return (
     <div class="min-h-screen flex flex-col">
       {/* Header */}
-      <header class="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center">
-            <span class="text-white text-xl">⚡</span>
+      <header class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-800">
+        <div class="flex items-center gap-2 sm:gap-3">
+          <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center">
+            <span class="text-white text-lg sm:text-xl">⚡</span>
           </div>
           <div>
-            <h1 class="font-bold text-lg text-gray-900 dark:text-gray-100">
+            <h1 class="font-bold text-base sm:text-lg text-gray-900 dark:text-gray-100">
               ProxyPal
             </h1>
-            <p class="text-xs text-gray-500 dark:text-gray-400">
+            <p class="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
               Use your AI subscriptions everywhere
             </p>
           </div>
@@ -66,23 +66,23 @@ export function WelcomePage() {
       </header>
 
       {/* Main content */}
-      <main class="flex-1 p-6">
+      <main class="flex-1 p-4 sm:p-6">
         <div class="max-w-2xl mx-auto">
           {/* Welcome message */}
-          <div class="text-center mb-8">
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+          <div class="text-center mb-6 sm:mb-8">
+            <h2 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
               Connect your AI accounts
             </h2>
-            <p class="text-gray-600 dark:text-gray-400">
+            <p class="text-sm sm:text-base text-gray-600 dark:text-gray-400">
               Link your existing subscriptions to use them with any AI coding
               tool.
-              <br />
-              No separate API keys needed.
+              <br class="hidden sm:block" />
+              <span class="sm:hidden"> </span>No separate API keys needed.
             </p>
           </div>
 
           {/* Provider cards */}
-          <div class="grid grid-cols-2 gap-4 mb-8">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
             {providers.map((provider) => (
               <ProviderCard
                 name={provider.name}

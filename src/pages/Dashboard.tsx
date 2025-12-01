@@ -153,20 +153,22 @@ export function DashboardPage() {
   return (
     <div class="min-h-screen flex flex-col">
       {/* Header */}
-      <header class="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+      <header class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-800">
         <div class="flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center">
-              <span class="text-white text-xl">⚡</span>
+          <div class="flex items-center gap-2 sm:gap-3">
+            <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center">
+              <span class="text-white text-lg sm:text-xl">⚡</span>
             </div>
             <div>
-              <h1 class="font-bold text-lg text-gray-900 dark:text-gray-100">
+              <h1 class="font-bold text-base sm:text-lg text-gray-900 dark:text-gray-100">
                 ProxyPal
               </h1>
-              <p class="text-xs text-gray-500 dark:text-gray-400">Dashboard</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
+                Dashboard
+              </p>
             </div>
           </div>
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2 sm:gap-3">
             <StatusIndicator
               running={proxyStatus().running}
               onToggle={toggleProxy}
@@ -202,8 +204,8 @@ export function DashboardPage() {
       </header>
 
       {/* Main content */}
-      <main class="flex-1 p-6 overflow-y-auto">
-        <div class="max-w-3xl mx-auto space-y-6 animate-stagger">
+      <main class="flex-1 p-4 sm:p-6 overflow-y-auto">
+        <div class="max-w-3xl mx-auto space-y-4 sm:space-y-6 animate-stagger">
           {/* Show Getting Started for first-time users */}
           <Show when={!hasAnyProvider()}>
             <GettingStartedEmptyState
@@ -229,7 +231,7 @@ export function DashboardPage() {
               <h2 class="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-3">
                 Connected Accounts
               </h2>
-              <div class="grid grid-cols-2 gap-3 animate-stagger">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 animate-stagger">
                 {connectedProviders().map((provider) => (
                   <div class="flex items-center gap-3 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 group hover-lift">
                     <img
@@ -310,7 +312,7 @@ export function DashboardPage() {
                   </button>
                 </div>
               </Show>
-              <div class="grid grid-cols-2 gap-3 animate-stagger">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 animate-stagger">
                 {disconnectedProviders().map((provider) => (
                   <button
                     class="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-brand-500 hover-lift transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -374,21 +376,21 @@ export function DashboardPage() {
             <h2 class="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-3">
               Quick Setup
             </h2>
-            <div class="grid grid-cols-3 gap-3 animate-stagger">
+            <div class="grid grid-cols-3 gap-2 sm:gap-3 animate-stagger">
               {setupTools.map((tool) => (
                 <button
-                  class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-brand-500 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover-lift transition-all text-center group"
+                  class="p-2 sm:p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-brand-500 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover-lift transition-all text-center group"
                   onClick={() => setSetupTool(tool.id)}
                 >
                   <img
                     src={tool.logo}
                     alt={tool.name}
-                    class="w-8 h-8 mx-auto mb-2 rounded group-hover:scale-110 transition-transform"
+                    class="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-1 sm:mb-2 rounded group-hover:scale-110 transition-transform"
                   />
-                  <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <span class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
                     {tool.name}
                   </span>
-                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 hidden sm:block">
                     View setup
                   </p>
                 </button>

@@ -17,6 +17,7 @@ import {
   onAuthStatusChanged,
   onOAuthCallback,
   onTrayToggleProxy,
+  showSystemNotification,
 } from "../lib/tauri";
 
 function createAppStore() {
@@ -53,15 +54,21 @@ function createAppStore() {
   const [proxyStartTime, setProxyStartTime] = createSignal<number | null>(null);
 
   // Helper to update proxy status and track uptime
-  const updateProxyStatus = (status: ProxyStatus) => {
+  const updateProxyStatus = (status: ProxyStatus, showNotification = false) => {
     const wasRunning = proxyStatus().running;
     setProxyStatus(status);
 
     // Track start time when proxy starts
     if (status.running && !wasRunning) {
       setProxyStartTime(Date.now());
+      if (showNotification) {
+        showSystemNotification("ProxyPal", "Proxy server is now running");
+      }
     } else if (!status.running && wasRunning) {
       setProxyStartTime(null);
+      if (showNotification) {
+        showSystemNotification("ProxyPal", "Proxy server has stopped");
+      }
     }
   };
 
@@ -135,10 +142,10 @@ function createAppStore() {
         try {
           if (shouldStart) {
             const status = await startProxy();
-            updateProxyStatus(status);
+            updateProxyStatus(status, true); // Show notification
           } else {
             const status = await stopProxy();
-            updateProxyStatus(status);
+            updateProxyStatus(status, true); // Show notification
           }
         } catch (error) {
           console.error("Failed to toggle proxy:", error);

@@ -37,8 +37,8 @@ export function SettingsPage() {
   return (
     <div class="min-h-screen flex flex-col">
       {/* Header */}
-      <header class="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-        <div class="flex items-center gap-3">
+      <header class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-800">
+        <div class="flex items-center gap-2 sm:gap-3">
           <Button
             variant="ghost"
             size="sm"
@@ -85,8 +85,8 @@ export function SettingsPage() {
       </header>
 
       {/* Main content */}
-      <main class="flex-1 p-6 overflow-y-auto">
-        <div class="max-w-xl mx-auto space-y-6 animate-stagger">
+      <main class="flex-1 p-4 sm:p-6 overflow-y-auto">
+        <div class="max-w-xl mx-auto space-y-4 sm:space-y-6 animate-stagger">
           {/* General settings */}
           <div class="space-y-4">
             <h2 class="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">

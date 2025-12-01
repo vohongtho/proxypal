@@ -42,10 +42,10 @@ export function UsageSummary() {
   };
 
   return (
-    <div class="grid grid-cols-3 gap-3">
+    <div class="grid grid-cols-3 gap-2 sm:gap-3">
       {/* Proxy Status */}
-      <div class="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-        <div class="flex items-center gap-2 mb-1">
+      <div class="p-3 sm:p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+        <div class="flex items-center gap-1.5 sm:gap-2 mb-1">
           <div
             class={`w-2 h-2 rounded-full ${proxyStatus().running ? "bg-green-500 animate-pulse" : "bg-gray-400"}`}
           />
@@ -53,14 +53,14 @@ export function UsageSummary() {
             Status
           </span>
         </div>
-        <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        <p class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
           {proxyStatus().running ? "Running" : "Stopped"}
         </p>
       </div>
 
       {/* Uptime */}
-      <div class="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-        <div class="flex items-center gap-2 mb-1">
+      <div class="p-3 sm:p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+        <div class="flex items-center gap-1.5 sm:gap-2 mb-1">
           <svg
             class="w-3 h-3 text-gray-400"
             fill="none"
@@ -78,14 +78,14 @@ export function UsageSummary() {
             Uptime
           </span>
         </div>
-        <p class="text-lg font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
+        <p class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
           {uptime()}
         </p>
       </div>
 
       {/* Connected Providers */}
-      <div class="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-        <div class="flex items-center gap-2 mb-1">
+      <div class="p-3 sm:p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+        <div class="flex items-center gap-1.5 sm:gap-2 mb-1">
           <svg
             class="w-3 h-3 text-gray-400"
             fill="none"
@@ -103,7 +103,7 @@ export function UsageSummary() {
             Providers
           </span>
         </div>
-        <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        <p class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
           {connectedCount()}
           <span class="text-sm font-normal text-gray-500"> / 4</span>
         </p>
