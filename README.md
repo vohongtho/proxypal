@@ -1,11 +1,12 @@
 # ProxyPal
 
-A desktop app that lets you use your AI subscriptions (Claude, ChatGPT, Gemini) with any coding tool. Wraps [CLIProxyAPI](https://github.com/nexon33/CLIProxyAPI) with a clean UI for managing connections and tracking usage.
+A desktop app that lets you use your AI subscriptions (Claude, ChatGPT, Gemini, GitHub Copilot) with any coding tool. Wraps [CLIProxyAPI](https://github.com/nexon33/CLIProxyAPI) with a clean UI for managing connections and tracking usage.
 
 ## Features
 
-- **One-click OAuth** - Connect Claude, ChatGPT, Gemini, and more
+- **One-click OAuth** - Connect Claude, ChatGPT, Gemini, GitHub Copilot, and more
 - **Works with any tool** - Cursor, Windsurf, Continue, Claude Code, OpenCode, etc.
+- **Copilot proxy support** - Built-in bridge for GitHub Copilot APIs not available in CLIProxyAPI
 - **Track savings** - See how much you're saving vs API costs
 - **Request history** - Monitor all AI requests through the proxy
 - **Auto-configure** - Detects installed CLI agents and configures them automatically

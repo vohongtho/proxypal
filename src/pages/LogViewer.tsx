@@ -29,32 +29,33 @@ export function LogViewerPage() {
   const [filter, setFilter] = createSignal<string>("all");
   const [search, setSearch] = createSignal("");
   const [showClearConfirm, setShowClearConfirm] = createSignal(false);
-  const [initialized, setInitialized] = createSignal(false);
 
   let refreshInterval: ReturnType<typeof setInterval> | null = null;
   let logContainerRef: HTMLDivElement | undefined;
+  let prevRunning = false;
 
   // Load logs once on mount when proxy is running
   onMount(() => {
-    if (proxyStatus().running) {
+    prevRunning = proxyStatus().running;
+    if (prevRunning) {
       loadLogs();
     }
-    setInitialized(true);
   });
 
-  // React to proxy status changes (only after initial mount)
+  // React to proxy status changes (only when running state actually changes)
   createEffect(() => {
     const running = proxyStatus().running;
-    if (!initialized()) return;
 
-    if (running) {
+    // Only load logs when proxy STARTS (transitions from stopped to running)
+    if (running && !prevRunning) {
       loadLogs();
-    } else {
+    } else if (!running && prevRunning) {
       setLogs([]);
     }
+    prevRunning = running;
   });
 
-  // Auto-refresh effect - 10 second interval (not 3)
+  // Auto-refresh effect - only when explicitly enabled (30 second interval)
   createEffect(() => {
     // Clean up previous interval
     if (refreshInterval) {
@@ -63,7 +64,7 @@ export function LogViewerPage() {
     }
 
     if (autoRefresh() && proxyStatus().running) {
-      refreshInterval = setInterval(loadLogs, 10000); // 10 seconds, not 3
+      refreshInterval = setInterval(loadLogs, 30000);
     }
   });
 
@@ -214,7 +215,7 @@ export function LogViewerPage() {
           </div>
 
           <div class="flex items-center gap-2">
-            {/* Auto-refresh toggle */}
+            {/* Auto-refresh toggle - play/pause icon */}
             <button
               onClick={() => setAutoRefresh(!autoRefresh())}
               class={`p-2 rounded-lg transition-colors ${
@@ -222,33 +223,35 @@ export function LogViewerPage() {
                   ? "bg-brand-500/20 text-brand-500"
                   : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
               }`}
-              title={autoRefresh() ? "Auto-refresh ON" : "Auto-refresh OFF"}
+              title={
+                autoRefresh() ? "Stop auto-refresh" : "Start auto-refresh (30s)"
+              }
             >
-              <svg
-                class={`w-5 h-5 ${autoRefresh() ? "animate-spin" : ""}`}
-                style={{ "animation-duration": "3s" }}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+              <Show
+                when={autoRefresh()}
+                fallback={
+                  /* Play icon when OFF */
+                  <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                }
               >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
+                {/* Pause icon when ON */}
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                </svg>
+              </Show>
             </button>
 
-            {/* Refresh button */}
+            {/* Manual refresh button - circular arrow with spin when loading */}
             <button
               onClick={loadLogs}
               disabled={loading()}
               class="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
-              title="Refresh"
+              title="Refresh now"
             >
               <svg
-                class="w-5 h-5"
+                class={`w-5 h-5 ${loading() ? "animate-spin" : ""}`}
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
