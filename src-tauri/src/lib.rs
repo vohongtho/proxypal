@@ -4451,7 +4451,7 @@ async fn upload_auth_file(state: State<'_, AppState>, file_path: String, provide
 #[tauri::command]
 async fn delete_auth_file(state: State<'_, AppState>, file_id: String) -> Result<(), String> {
     let port = state.config.lock().unwrap().port;
-    let url = format!("{}/{}", get_management_url(port, "auth-files"), file_id);
+    let url = format!("{}?name={}", get_management_url(port, "auth-files"), file_id);
     
     let client = build_management_client();
     let response = client
@@ -4531,7 +4531,7 @@ async fn download_auth_file(state: State<'_, AppState>, file_id: String, filenam
 #[tauri::command]
 async fn delete_all_auth_files(state: State<'_, AppState>) -> Result<(), String> {
     let port = state.config.lock().unwrap().port;
-    let url = get_management_url(port, "auth-files");
+    let url = format!("{}?all=true", get_management_url(port, "auth-files"));
     
     let client = build_management_client();
     let response = client
