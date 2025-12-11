@@ -3436,11 +3436,14 @@ fn get_model_display_name(model_id: &str, owned_by: &str) -> String {
 
 // Configure a CLI agent with ProxyPal
 #[tauri::command]
-fn configure_cli_agent(state: State<AppState>, agent_id: String, models: Vec<AvailableModel>) -> Result<serde_json::Value, String> {
-    let config = state.config.lock().unwrap();
-    let port = config.port;
-    let endpoint = format!("http://127.0.0.1:{}", port);
-    let endpoint_v1 = format!("{}/v1", endpoint);
+async fn configure_cli_agent(state: State<'_, AppState>, agent_id: String, models: Vec<AvailableModel>) -> Result<serde_json::Value, String> {
+    let (port, endpoint, endpoint_v1) = {
+        let config = state.config.lock().unwrap();
+        let port = config.port;
+        let endpoint = format!("http://127.0.0.1:{}", port);
+        let endpoint_v1 = format!("{}/v1", endpoint);
+        (port, endpoint, endpoint_v1)
+    }; // Mutex guard dropped here
     let home = dirs::home_dir().ok_or("Could not find home directory")?;
 
     match agent_id.as_str() {
@@ -3686,10 +3689,9 @@ export AMP_API_KEY="proxypal-local"
         },
         
         "opencode" => {
-            // OpenCode uses opencode.json config file with custom provider
-            // See: https://opencode.ai/docs/providers/#custom-provider
+            let home = dirs::home_dir().ok_or("Could not find home directory")?;
             let config_dir = home.join(".config/opencode");
-            std::fs::create_dir_all(&config_dir).map_err(|e| e.to_string())?;
+            tokio::fs::create_dir_all(&config_dir).await.map_err(|e| e.to_string())?;
             let config_path = config_dir.join("opencode.json");
             
             // Build dynamic models object from available models
