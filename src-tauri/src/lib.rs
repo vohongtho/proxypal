@@ -910,8 +910,12 @@ async fn start_proxy(
         entry.push_str("        name: \"gpt-5.1\"\n");
         entry.push_str("      - alias: \"copilot-gpt-5.1-codex\"\n");
         entry.push_str("        name: \"gpt-5.1-codex\"\n");
-        entry.push_str("      - alias: \"copilot-gpt-5.1-codex-mini\"\n");
-        entry.push_str("        name: \"gpt-5.1-codex-mini\"\n");
+        entry.push_str("      - alias: \\\"copilot-gpt-5.1-codex-mini\\\"\\n");
+        entry.push_str("        name: \\\"gpt-5.1-codex-mini\\\"\\n");
+        entry.push_str("      - alias: \\\"copilot-gpt-5.1-codex-max\\\"\\n");
+        entry.push_str("        name: \\\"gpt-5.1-codex-max\\\"\\n");
+        entry.push_str("      - alias: \\\"copilot-gpt-5.2\\\"\\n");
+        entry.push_str("        name: \\\"gpt-5.2\\\"\\n");
         // Legacy OpenAI models (may still work)
         entry.push_str("      - alias: \"copilot-gpt-4o\"\n");
         entry.push_str("        name: \"gpt-4o\"\n");
