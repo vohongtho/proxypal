@@ -943,3 +943,77 @@ export async function getRequestErrorLogContent(
 ): Promise<string> {
 	return invoke("get_request_error_log_content", { filename });
 }
+
+// ============================================================================
+// App Updates (OTA via Tauri Updater Plugin)
+// ============================================================================
+
+import { relaunch } from "@tauri-apps/plugin-process";
+import { check } from "@tauri-apps/plugin-updater";
+
+export interface UpdateInfo {
+	available: boolean;
+	version?: string;
+	currentVersion?: string;
+	date?: string;
+	body?: string;
+}
+
+export interface UpdateProgress {
+	event: "Started" | "Progress" | "Finished";
+	contentLength?: number;
+	chunkLength?: number;
+}
+
+// Check for available updates
+export async function checkForUpdates(): Promise<UpdateInfo> {
+	try {
+		const update = await check();
+		if (update) {
+			return {
+				available: true,
+				version: update.version,
+				currentVersion: update.currentVersion,
+				date: update.date,
+				body: update.body,
+			};
+		}
+		return { available: false };
+	} catch (error) {
+		console.error("Failed to check for updates:", error);
+		throw error;
+	}
+}
+
+// Download and install update with progress callback
+export async function downloadAndInstallUpdate(
+	onProgress?: (progress: UpdateProgress) => void,
+): Promise<void> {
+	const update = await check();
+	if (!update) {
+		throw new Error("No update available");
+	}
+
+	await update.downloadAndInstall((event) => {
+		if (onProgress) {
+			if (event.event === "Started") {
+				onProgress({
+					event: "Started",
+					contentLength: event.data.contentLength ?? undefined,
+				});
+			} else if (event.event === "Progress") {
+				onProgress({
+					event: "Progress",
+					chunkLength: event.data.chunkLength,
+				});
+			} else if (event.event === "Finished") {
+				onProgress({ event: "Finished" });
+			}
+		}
+	});
+}
+
+// Relaunch the app after update
+export async function relaunchApp(): Promise<void> {
+	await relaunch();
+}
