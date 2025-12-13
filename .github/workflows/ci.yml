@@ -104,6 +104,7 @@ jobs:
         run: pnpm install
 
       - name: Build Tauri app
+        shell: bash
         run: pnpm tauri build --target ${{ matrix.target }} --config '{"bundle":{"createUpdaterArtifacts":false}}'
         env:
           APPIMAGELAUNCHER_DISABLE: 1
