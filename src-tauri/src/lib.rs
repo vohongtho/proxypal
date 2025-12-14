@@ -1141,7 +1141,7 @@ quota-exceeded:
 
 # Enable Management API for OAuth flows
 remote-management:
-  allow-remote: false
+  allow-remote: true
   secret-key: "proxypal-mgmt-key"
   disable-control-panel: true
 
@@ -5845,6 +5845,33 @@ fn get_tool_setup_info(tool_id: String, state: State<AppState>) -> Result<serde_
     Ok(info)
 }
 
+// Check if auto-updater is supported on this platform/install type
+// Linux .deb installations do NOT support auto-update (only AppImage does)
+#[tauri::command]
+fn is_updater_supported() -> Result<serde_json::Value, String> {
+    #[cfg(target_os = "linux")]
+    {
+        // On Linux, check if running as AppImage (APPIMAGE env var is set)
+        let is_appimage = std::env::var("APPIMAGE").is_ok();
+        Ok(serde_json::json!({
+            "supported": is_appimage,
+            "reason": if is_appimage { 
+                "AppImage supports auto-update" 
+            } else { 
+                "Auto-update is only supported for AppImage installations. Please download the new version manually from GitHub Releases." 
+            }
+        }))
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        // Windows and macOS support auto-update
+        Ok(serde_json::json!({
+            "supported": true,
+            "reason": "Auto-update supported"
+        }))
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Clean up any orphaned cliproxyapi processes from previous crashes
@@ -6010,6 +6037,8 @@ pub fn run() {
             // Window behavior
             get_close_to_tray,
             set_close_to_tray,
+            // Updater support check
+            is_updater_supported,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

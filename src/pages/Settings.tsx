@@ -24,6 +24,7 @@ import {
 	getThinkingBudgetSettings,
 	getThinkingBudgetTokens,
 	getWebsocketAuth,
+	isUpdaterSupported,
 	type OAuthExcludedModels,
 	type ReasoningEffortLevel,
 	saveConfig,
@@ -39,6 +40,7 @@ import {
 	testOpenAIProvider,
 	type UpdateInfo,
 	type UpdateProgress,
+	type UpdaterSupport,
 } from "../lib/tauri";
 import { appStore } from "../stores/app";
 import { themeStore } from "../stores/theme";
@@ -131,6 +133,18 @@ export function SettingsPage() {
 	const [installingUpdate, setInstallingUpdate] = createSignal(false);
 	const [updateProgress, setUpdateProgress] =
 		createSignal<UpdateProgress | null>(null);
+	const [updaterSupport, setUpdaterSupport] =
+		createSignal<UpdaterSupport | null>(null);
+
+	// Check updater support on mount
+	createEffect(async () => {
+		try {
+			const support = await isUpdaterSupported();
+			setUpdaterSupport(support);
+		} catch (error) {
+			console.error("Failed to check updater support:", error);
+		}
+	});
 
 	// Close to tray setting
 	const [closeToTray, setCloseToTrayState] = createSignal(true);
@@ -3199,17 +3213,19 @@ export function SettingsPage() {
 
 									{/* Install button */}
 									<div class="mt-3">
-										<Button
-											variant="primary"
-											size="sm"
-											onClick={handleInstallUpdate}
-											disabled={installingUpdate()}
-											class="w-full"
-										>
-											<Show
-												when={installingUpdate()}
-												fallback={
-													<>
+										<Show
+											when={updaterSupport()?.supported !== false}
+											fallback={
+												<div class="text-center">
+													<p class="text-xs text-amber-600 dark:text-amber-400 mb-2">
+														{updaterSupport()?.reason}
+													</p>
+													<a
+														href="https://github.com/heyhuynhgiabuu/proxypal/releases"
+														target="_blank"
+														rel="noopener noreferrer"
+														class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 rounded-lg transition-colors"
+													>
 														<svg
 															class="w-4 h-4 mr-1.5"
 															fill="none"
@@ -3220,37 +3236,67 @@ export function SettingsPage() {
 																stroke-linecap="round"
 																stroke-linejoin="round"
 																stroke-width="2"
-																d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+																d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
 															/>
 														</svg>
-														Download & Install
-													</>
-												}
+														Download from GitHub
+													</a>
+												</div>
+											}
+										>
+											<Button
+												variant="primary"
+												size="sm"
+												onClick={handleInstallUpdate}
+												disabled={installingUpdate()}
+												class="w-full"
 											>
-												<svg
-													class="w-4 h-4 animate-spin mr-1.5"
-													fill="none"
-													viewBox="0 0 24 24"
+												<Show
+													when={installingUpdate()}
+													fallback={
+														<>
+															<svg
+																class="w-4 h-4 mr-1.5"
+																fill="none"
+																stroke="currentColor"
+																viewBox="0 0 24 24"
+															>
+																<path
+																	stroke-linecap="round"
+																	stroke-linejoin="round"
+																	stroke-width="2"
+																	d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+																/>
+															</svg>
+															Download & Install
+														</>
+													}
 												>
-													<circle
-														class="opacity-25"
-														cx="12"
-														cy="12"
-														r="10"
-														stroke="currentColor"
-														stroke-width="4"
-													/>
-													<path
-														class="opacity-75"
-														fill="currentColor"
-														d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-													/>
-												</svg>
-												{updateProgress()?.event === "Progress"
-													? "Downloading..."
-													: "Installing..."}
-											</Show>
-										</Button>
+													<svg
+														class="w-4 h-4 animate-spin mr-1.5"
+														fill="none"
+														viewBox="0 0 24 24"
+													>
+														<circle
+															class="opacity-25"
+															cx="12"
+															cy="12"
+															r="10"
+															stroke="currentColor"
+															stroke-width="4"
+														/>
+														<path
+															class="opacity-75"
+															fill="currentColor"
+															d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+														/>
+													</svg>
+													{updateProgress()?.event === "Progress"
+														? "Downloading..."
+														: "Installing..."}
+												</Show>
+											</Button>
+										</Show>
 									</div>
 
 									{/* Progress indicator */}
@@ -3316,7 +3362,7 @@ export function SettingsPage() {
 								ProxyPal
 							</h3>
 							<p class="text-sm text-gray-500 dark:text-gray-400">
-								Version 0.1.46
+								Version 0.1.47
 							</p>
 							<p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
 								Built with love by OpenCodeKit

@@ -1029,6 +1029,15 @@ export async function downloadAndInstallUpdate(
 		throw new Error("No update available");
 	}
 
+	// Stop proxy BEFORE download/install to release cliproxyapi binary (required on Windows)
+	try {
+		await invoke("stop_proxy");
+		// Wait for process to fully terminate (Windows needs more time)
+		await new Promise((resolve) => setTimeout(resolve, 1500));
+	} catch {
+		// Ignore errors, proxy might not be running
+	}
+
 	await update.downloadAndInstall((event) => {
 		if (onProgress) {
 			if (event.event === "Started") {
@@ -1047,16 +1056,6 @@ export async function downloadAndInstallUpdate(
 		}
 	});
 
-	// Stop proxy before relaunch to release cliproxyapi binary (required on Windows)
-	try {
-		await invoke("stop_proxy");
-	} catch {
-		// Ignore errors, proxy might not be running
-	}
-
-	// Wait for process to fully terminate (Windows needs more time)
-	await new Promise((resolve) => setTimeout(resolve, 1000));
-
 	// Explicitly relaunch after install completes
 	await relaunch();
 }
@@ -1064,4 +1063,14 @@ export async function downloadAndInstallUpdate(
 // Relaunch the app after update
 export async function relaunchApp(): Promise<void> {
 	await relaunch();
+}
+
+// Check if auto-updater is supported on this platform/install type
+export interface UpdaterSupport {
+	supported: boolean;
+	reason: string;
+}
+
+export async function isUpdaterSupported(): Promise<UpdaterSupport> {
+	return invoke<UpdaterSupport>("is_updater_supported");
 }
