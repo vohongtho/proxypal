@@ -1859,9 +1859,15 @@ async fn detect_copilot_api(app: tauri::AppHandle) -> Result<CopilotApiDetection
             format!("{}/AppData/Local/fnm_multishells/node.exe", home_str), // fnm
             format!("{}/scoop/apps/nodejs/current/node.exe", home_str), // Scoop
             format!("{}/scoop/apps/nodejs-lts/current/node.exe", home_str), // Scoop LTS
+            // Chocolatey installation path
+            "C:\\ProgramData\\chocolatey\\bin\\node.exe".to_string(),
+            // Windows Store / winget paths
+            format!("{}/AppData/Local/Microsoft/WindowsApps/node.exe", home_str),
             // npm global bin (for detecting npm-installed tools)
             format!("{}/AppData/Roaming/npm/node.exe", home_str),
-            // Fallback to PATH
+            // PowerShell profile paths (pnpm, yarn global)
+            format!("{}/AppData/Local/pnpm/node.exe", home_str),
+            // Fallback to PATH (works with any terminal: CMD, PowerShell, Windows Terminal)
             "node.exe".to_string(),
             "node".to_string(),
         ]
