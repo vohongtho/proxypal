@@ -370,29 +370,39 @@ impl Default for AppState {
     }
 }
 
+// Get the proxypal config directory, creating it if needed with proper error logging
+fn get_proxypal_config_dir() -> std::path::PathBuf {
+    let config_dir = dirs::config_dir()
+        .unwrap_or_else(|| {
+            eprintln!("[ProxyPal] Warning: Could not determine config directory, using current directory");
+            std::path::PathBuf::from(".")
+        })
+        .join("proxypal");
+    
+    if let Err(e) = std::fs::create_dir_all(&config_dir) {
+        eprintln!(
+            "[ProxyPal] Error: Failed to create config directory '{}': {}",
+            config_dir.display(),
+            e
+        );
+        eprintln!("[ProxyPal] Usage statistics and settings may not persist correctly.");
+        eprintln!("[ProxyPal] Please ensure the app has write permissions to ~/Library/Application Support/proxypal/");
+    }
+    
+    config_dir
+}
+
 // Config file path
 fn get_config_path() -> std::path::PathBuf {
-    let config_dir = dirs::config_dir()
-        .unwrap_or_else(|| std::path::PathBuf::from("."))
-        .join("proxypal");
-    std::fs::create_dir_all(&config_dir).ok();
-    config_dir.join("config.json")
+    get_proxypal_config_dir().join("config.json")
 }
 
 fn get_auth_path() -> std::path::PathBuf {
-    let config_dir = dirs::config_dir()
-        .unwrap_or_else(|| std::path::PathBuf::from("."))
-        .join("proxypal");
-    std::fs::create_dir_all(&config_dir).ok();
-    config_dir.join("auth.json")
+    get_proxypal_config_dir().join("auth.json")
 }
 
 fn get_history_path() -> std::path::PathBuf {
-    let config_dir = dirs::config_dir()
-        .unwrap_or_else(|| std::path::PathBuf::from("."))
-        .join("proxypal");
-    std::fs::create_dir_all(&config_dir).ok();
-    config_dir.join("history.json")
+    get_proxypal_config_dir().join("history.json")
 }
 
 // Request history with metadata
