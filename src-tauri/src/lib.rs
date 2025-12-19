@@ -4348,13 +4348,12 @@ export AMP_API_KEY="proxypal-local"
             }
             
             // Create or update opencode.json with proxypal provider
-            // Use @ai-sdk/openai-compatible instead of @ai-sdk/anthropic to avoid
-            // tool_use/tool_result ID mismatch issues with Antigravity Claude models
+            // Use @ai-sdk/anthropic for native Anthropic API support
             let opencode_config = serde_json::json!({
                 "$schema": "https://opencode.ai/config.json",
                 "provider": {
                     "proxypal": {
-                        "npm": "@ai-sdk/openai-compatible",
+                        "npm": "@ai-sdk/anthropic",
                         "name": "ProxyPal",
                         "options": {
                             "baseURL": endpoint_v1,
@@ -5549,6 +5548,95 @@ async fn set_force_model_mappings(state: State<'_, AppState>, value: bool) -> Re
     Ok(())
 }
 
+// Claude Code settings struct
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClaudeCodeSettings {
+    pub haiku_model: Option<String>,
+    pub opus_model: Option<String>,
+    pub sonnet_model: Option<String>,
+    pub base_url: Option<String>,
+    pub auth_token: Option<String>,
+}
+
+// Get Claude Code model settings from ~/.claude/settings.json
+#[tauri::command]
+fn get_claude_code_settings() -> Result<ClaudeCodeSettings, String> {
+    let home = dirs::home_dir().ok_or("Could not find home directory")?;
+    let settings_path = home.join(".claude").join("settings.json");
+    
+    if !settings_path.exists() {
+        return Ok(ClaudeCodeSettings {
+            haiku_model: None,
+            opus_model: None,
+            sonnet_model: None,
+            base_url: None,
+            auth_token: None,
+        });
+    }
+    
+    let content = std::fs::read_to_string(&settings_path)
+        .map_err(|e| format!("Failed to read Claude settings: {}", e))?;
+    
+    let json: serde_json::Value = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse Claude settings: {}", e))?;
+    
+    let env = json.get("env").and_then(|v| v.as_object());
+    
+    Ok(ClaudeCodeSettings {
+        haiku_model: env.and_then(|e| e.get("ANTHROPIC_DEFAULT_HAIKU_MODEL")).and_then(|v| v.as_str()).map(|s| s.to_string()),
+        opus_model: env.and_then(|e| e.get("ANTHROPIC_DEFAULT_OPUS_MODEL")).and_then(|v| v.as_str()).map(|s| s.to_string()),
+        sonnet_model: env.and_then(|e| e.get("ANTHROPIC_DEFAULT_SONNET_MODEL")).and_then(|v| v.as_str()).map(|s| s.to_string()),
+        base_url: env.and_then(|e| e.get("ANTHROPIC_BASE_URL")).and_then(|v| v.as_str()).map(|s| s.to_string()),
+        auth_token: env.and_then(|e| e.get("ANTHROPIC_AUTH_TOKEN")).and_then(|v| v.as_str()).map(|s| s.to_string()),
+    })
+}
+
+// Set Claude Code model mapping
+#[tauri::command]
+fn set_claude_code_model(model_type: String, model_name: String) -> Result<(), String> {
+    let home = dirs::home_dir().ok_or("Could not find home directory")?;
+    let claude_dir = home.join(".claude");
+    let settings_path = claude_dir.join("settings.json");
+    
+    // Ensure .claude directory exists
+    std::fs::create_dir_all(&claude_dir)
+        .map_err(|e| format!("Failed to create .claude directory: {}", e))?;
+    
+    // Read existing settings or create new
+    let mut json: serde_json::Value = if settings_path.exists() {
+        let content = std::fs::read_to_string(&settings_path)
+            .map_err(|e| format!("Failed to read Claude settings: {}", e))?;
+        serde_json::from_str(&content).unwrap_or(serde_json::json!({}))
+    } else {
+        serde_json::json!({})
+    };
+    
+    // Ensure env object exists
+    if json.get("env").is_none() {
+        json["env"] = serde_json::json!({});
+    }
+    
+    // Map model_type to env key
+    let env_key = match model_type.as_str() {
+        "haiku" => "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+        "opus" => "ANTHROPIC_DEFAULT_OPUS_MODEL",
+        "sonnet" => "ANTHROPIC_DEFAULT_SONNET_MODEL",
+        _ => return Err(format!("Unknown model type: {}", model_type)),
+    };
+    
+    // Set the model
+    json["env"][env_key] = serde_json::Value::String(model_name);
+    
+    // Write back
+    let content = serde_json::to_string_pretty(&json)
+        .map_err(|e| format!("Failed to serialize Claude settings: {}", e))?;
+    std::fs::write(&settings_path, content)
+        .map_err(|e| format!("Failed to write Claude settings: {}", e))?;
+    
+    Ok(())
+}
+
 // Get OAuth excluded models from Management API
 #[tauri::command]
 async fn get_oauth_excluded_models(state: State<'_, AppState>) -> Result<std::collections::HashMap<String, Vec<String>>, String> {
@@ -6214,6 +6302,8 @@ pub fn run() {
             set_websocket_auth,
             get_force_model_mappings,
             set_force_model_mappings,
+            get_claude_code_settings,
+            set_claude_code_model,
             get_oauth_excluded_models,
             set_oauth_excluded_models,
             delete_oauth_excluded_models,

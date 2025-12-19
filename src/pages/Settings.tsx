@@ -4,6 +4,7 @@ import type {
 	AmpModelMapping,
 	AmpOpenAIModel,
 	AmpOpenAIProvider,
+	ClaudeCodeSettings,
 	ProviderTestResult,
 } from "../lib/tauri";
 import {
@@ -15,6 +16,7 @@ import {
 	detectCopilotApi,
 	downloadAndInstallUpdate,
 	getAvailableModels,
+	getClaudeCodeSettings,
 	getCloseToTray,
 	getConfigYaml,
 	getForceModelMappings,
@@ -28,6 +30,7 @@ import {
 	type OAuthExcludedModels,
 	type ReasoningEffortLevel,
 	saveConfig,
+	setClaudeCodeModel,
 	setCloseToTray,
 	setConfigYaml,
 	setForceModelMappings,
@@ -176,6 +179,49 @@ export function SettingsPage() {
 			toastStore.error(`Failed to save setting: ${error}`);
 		} finally {
 			setSavingCloseToTray(false);
+		}
+	};
+
+	// Claude Code settings
+	const [claudeCodeSettings, setClaudeCodeSettings] =
+		createSignal<ClaudeCodeSettings>({
+			haikuModel: null,
+			opusModel: null,
+			sonnetModel: null,
+			baseUrl: null,
+			authToken: null,
+		});
+
+	// Load Claude Code settings on mount
+	createEffect(async () => {
+		try {
+			const settings = await getClaudeCodeSettings();
+			setClaudeCodeSettings(settings);
+		} catch (error) {
+			console.error("Failed to fetch Claude Code settings:", error);
+		}
+	});
+
+	// Handler for Claude Code setting changes
+	const handleClaudeCodeSettingChange = async (
+		modelType: "haikuModel" | "opusModel" | "sonnetModel",
+		modelName: string,
+	) => {
+		try {
+			// Map frontend key to backend expected value
+			const backendModelType = modelType.replace("Model", "") as
+				| "haiku"
+				| "opus"
+				| "sonnet";
+			await setClaudeCodeModel(backendModelType, modelName);
+			setClaudeCodeSettings((prev) => ({
+				...prev,
+				[modelType]: modelName || null,
+			}));
+			toastStore.success("Claude Code model updated");
+		} catch (error) {
+			console.error("Failed to save Claude Code setting:", error);
+			toastStore.error(`Failed to save setting: ${error}`);
 		}
 	};
 
@@ -1234,6 +1280,163 @@ export function SettingsPage() {
 										gpt-5.2(low)
 									</code>
 								</p>
+							</div>
+						</div>
+					</div>
+
+					{/* Claude Code Settings */}
+					<div class="space-y-4">
+						<h2 class="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+							Claude Code Settings
+						</h2>
+
+						<div class="space-y-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+							<p class="text-xs text-gray-500 dark:text-gray-400">
+								Map Claude Code model slots to available provider models. These
+								settings modify the claude_desktop_config.json file.
+							</p>
+
+							<div class="space-y-3">
+								{(() => {
+									const { customModels, builtInModels } =
+										getAvailableTargetModels();
+									const hasModels =
+										customModels.length > 0 ||
+										builtInModels.anthropic.length > 0 ||
+										builtInModels.google.length > 0 ||
+										builtInModels.openai.length > 0 ||
+										builtInModels.copilot.length > 0;
+
+									if (!hasModels) {
+										return (
+											<p class="text-sm text-gray-500 dark:text-gray-400 italic">
+												No models available. Please authenticate with a provider
+												first.
+											</p>
+										);
+									}
+
+									const ModelSelect = (props: {
+										label: string;
+										value: string | null;
+										modelType: "haikuModel" | "opusModel" | "sonnetModel";
+									}) => (
+										<label class="block">
+											<span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+												{props.label}
+											</span>
+											<select
+												value={props.value || ""}
+												onChange={(e) =>
+													handleClaudeCodeSettingChange(
+														props.modelType,
+														e.currentTarget.value,
+													)
+												}
+												class="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-smooth"
+											>
+												<option value="">Select model...</option>
+												<Show when={customModels.length > 0}>
+													<optgroup label="Custom Providers">
+														<For each={customModels}>
+															{(model) => (
+																<option value={model.value}>
+																	{model.label}
+																</option>
+															)}
+														</For>
+													</optgroup>
+												</Show>
+												<Show when={builtInModels.anthropic.length > 0}>
+													<optgroup label="Anthropic">
+														<For each={builtInModels.anthropic}>
+															{(model) => (
+																<option value={model.value}>
+																	{model.label}
+																</option>
+															)}
+														</For>
+													</optgroup>
+												</Show>
+												<Show when={builtInModels.google.length > 0}>
+													<optgroup label="Google">
+														<For each={builtInModels.google}>
+															{(model) => (
+																<option value={model.value}>
+																	{model.label}
+																</option>
+															)}
+														</For>
+													</optgroup>
+												</Show>
+												<Show when={builtInModels.openai.length > 0}>
+													<optgroup label="OpenAI">
+														<For each={builtInModels.openai}>
+															{(model) => (
+																<option value={model.value}>
+																	{model.label}
+																</option>
+															)}
+														</For>
+													</optgroup>
+												</Show>
+												<Show when={builtInModels.copilot.length > 0}>
+													<optgroup label="GitHub Copilot">
+														<For each={builtInModels.copilot}>
+															{(model) => (
+																<option value={model.value}>
+																	{model.label}
+																</option>
+															)}
+														</For>
+													</optgroup>
+												</Show>
+												<Show when={builtInModels.qwen.length > 0}>
+													<optgroup label="Qwen">
+														<For each={builtInModels.qwen}>
+															{(model) => (
+																<option value={model.value}>
+																	{model.label}
+																</option>
+															)}
+														</For>
+													</optgroup>
+												</Show>
+												<Show when={builtInModels.iflow.length > 0}>
+													<optgroup label="iFlow">
+														<For each={builtInModels.iflow}>
+															{(model) => (
+																<option value={model.value}>
+																	{model.label}
+																</option>
+															)}
+														</For>
+													</optgroup>
+												</Show>
+											</select>
+										</label>
+									);
+
+									return (
+										<>
+											<ModelSelect
+												label="Haiku Model"
+												value={claudeCodeSettings().haikuModel}
+												modelType="haikuModel"
+											/>
+											<ModelSelect
+												label="Opus Model"
+												value={claudeCodeSettings().opusModel}
+												modelType="opusModel"
+											/>
+											<ModelSelect
+												label="Sonnet Model"
+												value={claudeCodeSettings().sonnetModel}
+												modelType="sonnetModel"
+											/>
+										</>
+									);
+								})()}
 							</div>
 						</div>
 					</div>
@@ -3376,7 +3579,7 @@ export function SettingsPage() {
 								ProxyPal
 							</h3>
 							<p class="text-sm text-gray-500 dark:text-gray-400">
-								Version 0.1.67
+								Version 0.1.68
 							</p>
 							<p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
 								Built with love by OpenCodeKit

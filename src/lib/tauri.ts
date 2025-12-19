@@ -955,6 +955,26 @@ export async function deleteOAuthExcludedModels(
 	return invoke("delete_oauth_excluded_models", { provider });
 }
 
+// Claude Code Settings
+export interface ClaudeCodeSettings {
+	haikuModel: string | null;
+	opusModel: string | null;
+	sonnetModel: string | null;
+	baseUrl: string | null;
+	authToken: string | null;
+}
+
+export async function getClaudeCodeSettings(): Promise<ClaudeCodeSettings> {
+	return invoke("get_claude_code_settings");
+}
+
+export async function setClaudeCodeModel(
+	modelType: string,
+	modelName: string,
+): Promise<void> {
+	return invoke("set_claude_code_model", { modelType, modelName });
+}
+
 // Raw Config YAML - for power users
 export async function getConfigYaml(): Promise<string> {
 	return invoke("get_config_yaml");
