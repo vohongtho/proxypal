@@ -7,10 +7,13 @@ BINARY_NAME="${1:-}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BINARIES_DIR="$SCRIPT_DIR/../binaries"
 
+# Use patched fork until upstream merges fixes (#730, #731, #732)
+CLIPROXYAPI_REPO="${CLIPROXYAPI_REPO:-heyhuynhgiabuu/CLIProxyAPI}"
+
 # Get latest version from GitHub API
-VERSION=$(curl -s https://api.github.com/repos/router-for-me/CLIProxyAPI/releases/latest | grep '"tag_name"' | sed -E 's/.*"v([^"]+)".*/\1/')
+VERSION=$(curl -s "https://api.github.com/repos/${CLIPROXYAPI_REPO}/releases/latest" | grep '"tag_name"' | sed -E 's/.*"v?([^"]+)".*/\1/')
 if [ -z "$VERSION" ]; then
-    VERSION="6.6.56"
+    VERSION="6.6.56-patched"
 fi
 
 # Map Tauri target to CLIProxyAPI asset name (bash 3 compatible - no associative arrays)
@@ -55,7 +58,7 @@ if [ -n "$BINARY_NAME" ]; then
     ARCHIVE_TYPE="${ASSET_INFO#*|}"
     
     echo "Downloading $ASSET_NAME for $BINARY_NAME..."
-    URL="https://github.com/router-for-me/CLIProxyAPI/releases/download/v${VERSION}/${ASSET_NAME}"
+    URL="https://github.com/${CLIPROXYAPI_REPO}/releases/download/v${VERSION}/${ASSET_NAME}"
     
     TEMP_DIR=$(mktemp -d)
     trap "rm -rf $TEMP_DIR" EXIT
