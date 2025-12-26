@@ -38,6 +38,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Create placeholder binary for CI check
+        run: |
+          mkdir -p src-tauri/binaries
+          touch src-tauri/binaries/cliproxyapi-aarch64-apple-darwin
+          chmod +x src-tauri/binaries/cliproxyapi-aarch64-apple-darwin
+
       - name: TypeScript check
         run: pnpm tsc --noEmit
 
