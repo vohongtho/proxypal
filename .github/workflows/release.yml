@@ -60,6 +60,73 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Download CLIProxyAPI binary
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          mkdir -p src-tauri/binaries
+
+          case "${{ matrix.target }}" in
+            aarch64-apple-darwin)
+              ASSET_PATTERN="*darwin_arm64.tar.gz"
+              BINARY="cliproxyapi-aarch64-apple-darwin"
+              ARCHIVE_TYPE="tar"
+              ;;
+            x86_64-apple-darwin)
+              ASSET_PATTERN="*darwin_amd64.tar.gz"
+              BINARY="cliproxyapi-x86_64-apple-darwin"
+              ARCHIVE_TYPE="tar"
+              ;;
+            x86_64-unknown-linux-gnu)
+              ASSET_PATTERN="*linux_amd64.tar.gz"
+              BINARY="cliproxyapi-x86_64-unknown-linux-gnu"
+              ARCHIVE_TYPE="tar"
+              ;;
+            x86_64-pc-windows-msvc)
+              ASSET_PATTERN="*windows_amd64.zip"
+              BINARY="cliproxyapi-x86_64-pc-windows-msvc.exe"
+              ARCHIVE_TYPE="zip"
+              ;;
+            *)
+              echo "Unknown target: ${{ matrix.target }}"
+              exit 1
+              ;;
+          esac
+
+          echo "Downloading CLIProxyAPI for ${{ matrix.target }}..."
+          cd /tmp
+          gh release download --repo router-for-me/CLIProxyAPI --pattern "$ASSET_PATTERN" --clobber
+
+          ARCHIVE=$(ls $ASSET_PATTERN 2>/dev/null | head -1)
+          echo "Extracting $ARCHIVE..."
+
+          if [ "$ARCHIVE_TYPE" = "zip" ]; then
+            unzip -q "$ARCHIVE"
+          else
+            tar -xzf "$ARCHIVE"
+          fi
+
+          if [ -f "CLIProxyAPI" ]; then
+            cp CLIProxyAPI "$GITHUB_WORKSPACE/src-tauri/binaries/$BINARY"
+            chmod +x "$GITHUB_WORKSPACE/src-tauri/binaries/$BINARY"
+          elif [ -f "CLIProxyAPI.exe" ]; then
+            cp CLIProxyAPI.exe "$GITHUB_WORKSPACE/src-tauri/binaries/$BINARY"
+          elif [ -f "cli-proxy-api.exe" ]; then
+            cp cli-proxy-api.exe "$GITHUB_WORKSPACE/src-tauri/binaries/$BINARY"
+          elif [ -f "cli-proxy-api" ]; then
+            cp cli-proxy-api "$GITHUB_WORKSPACE/src-tauri/binaries/$BINARY"
+            chmod +x "$GITHUB_WORKSPACE/src-tauri/binaries/$BINARY"
+          else
+            echo "Binary not found!"
+            ls -la
+            exit 1
+          fi
+
+          echo "Downloaded:"
+          ls -la "$GITHUB_WORKSPACE/src-tauri/binaries/"
+
       - name: Build and release
         uses: tauri-apps/tauri-action@v0
         env:
