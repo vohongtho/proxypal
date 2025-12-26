@@ -1,4 +1,5 @@
-import { type Component, createSignal, For, Show } from "solid-js";
+import { type Component, createSignal, For, onMount, Show } from "solid-js";
+import { checkForUpdates, downloadAndInstallUpdate } from "../lib/tauri";
 import { appStore } from "../stores/app";
 import { themeStore } from "../stores/theme";
 
@@ -134,6 +135,33 @@ export const Sidebar: Component = () => {
 		setSidebarExpanded,
 	} = appStore;
 	const [isPinned, setIsPinned] = createSignal(false);
+	const [updateAvailable, setUpdateAvailable] = createSignal(false);
+	const [updateVersion, setUpdateVersion] = createSignal("");
+	const [isUpdating, setIsUpdating] = createSignal(false);
+
+	// Check for updates on mount
+	onMount(async () => {
+		try {
+			const info = await checkForUpdates();
+			if (info.available && info.version) {
+				setUpdateAvailable(true);
+				setUpdateVersion(info.version);
+			}
+		} catch {
+			// Silently ignore update check errors
+		}
+	});
+
+	const handleUpdate = async () => {
+		if (isUpdating()) return;
+		setIsUpdating(true);
+		try {
+			await downloadAndInstallUpdate();
+		} catch (error) {
+			console.error("Update failed:", error);
+			setIsUpdating(false);
+		}
+	};
 
 	const isExpanded = () => isPinned() || sidebarExpanded();
 
@@ -267,6 +295,63 @@ export const Sidebar: Component = () => {
 					)}
 				</For>
 			</nav>
+
+			{/* Update Button - Show when update available */}
+			<Show when={updateAvailable()}>
+				<div class="px-2 py-2 border-t border-gray-200 dark:border-gray-800">
+					<button
+						type="button"
+						onClick={handleUpdate}
+						disabled={isUpdating()}
+						class="w-full flex items-center gap-3 px-2.5 py-2 rounded-lg bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
+						title={!isExpanded() ? `Update to ${updateVersion()}` : undefined}
+					>
+						<Show
+							when={!isUpdating()}
+							fallback={
+								<svg
+									class="w-5 h-5 flex-shrink-0 animate-spin"
+									viewBox="0 0 24 24"
+									fill="none"
+								>
+									<circle
+										class="opacity-25"
+										cx="12"
+										cy="12"
+										r="10"
+										stroke="currentColor"
+										stroke-width="4"
+									/>
+									<path
+										class="opacity-75"
+										fill="currentColor"
+										d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+									/>
+								</svg>
+							}
+						>
+							<svg
+								class="w-5 h-5 flex-shrink-0"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.5"
+							>
+								<path
+									d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0 0l-4-4m4 4l4-4"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								/>
+							</svg>
+						</Show>
+						<Show when={isExpanded()}>
+							<span class="text-sm font-medium whitespace-nowrap overflow-hidden">
+								{isUpdating() ? "Updating..." : `Update ${updateVersion()}`}
+							</span>
+						</Show>
+					</button>
+				</div>
+			</Show>
 
 			{/* Theme Toggle */}
 			<div class="px-2 py-3 border-t border-gray-200 dark:border-gray-800">
