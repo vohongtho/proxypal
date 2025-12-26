@@ -2453,10 +2453,11 @@ async fn sync_usage_from_proxy(state: State<'_, AppState>) -> Result<RequestHist
         total_cost += estimate_request_cost(model_name, *input as u32, *output as u32);
     }
     
-    // Extract time-series token data from CLIProxyAPI response
-    // Structure: { "usage": { "tokens_by_day": {"2024-01-15": 1234, ...}, "tokens_by_hour": {"00": 100, ...} } }
+    // Extract time-series data from CLIProxyAPI response
+    // Structure: { "usage": { "tokens_by_day": {...}, "tokens_by_hour": {...}, "requests_by_day": {...} } }
     let mut tokens_by_day: Vec<TimeSeriesPoint> = Vec::new();
     let mut tokens_by_hour: Vec<TimeSeriesPoint> = Vec::new();
+    let mut requests_by_day: Vec<TimeSeriesPoint> = Vec::new();
     
     if let Some(tbd) = usage.get("tokens_by_day").and_then(|v| v.as_object()) {
         for (day, value) in tbd {
@@ -2488,6 +2489,22 @@ async fn sync_usage_from_proxy(state: State<'_, AppState>) -> Result<RequestHist
         }
     }
     
+    // Parse requests_by_day from proxy (source of truth)
+    if let Some(rbd) = usage.get("requests_by_day").and_then(|v| v.as_object()) {
+        for (day, value) in rbd {
+            if let Some(v) = value.as_u64() {
+                requests_by_day.push(TimeSeriesPoint {
+                    label: day.clone(),
+                    value: v,
+                });
+            }
+        }
+        requests_by_day.sort_by(|a, b| a.label.cmp(&b.label));
+        if requests_by_day.len() > 14 {
+            requests_by_day = requests_by_day.split_off(requests_by_day.len() - 14);
+        }
+    }
+    
     // Update local history with synced data
     let mut history = load_request_history();
     history.total_tokens_in = total_input;
@@ -2514,6 +2531,62 @@ async fn sync_usage_from_proxy(state: State<'_, AppState>) -> Result<RequestHist
         }
     }
     agg.tokens_by_day.sort_by(|a, b| a.label.cmp(&b.label));
+    
+    // Merge requests_by_day into aggregate (proxy is source of truth for requests)
+    for point in &requests_by_day {
+        if let Some(existing) = agg.requests_by_day.iter_mut().find(|p| p.label == point.label) {
+            existing.value = point.value; // Update with proxy value
+        } else {
+            agg.requests_by_day.push(point.clone());
+        }
+    }
+    agg.requests_by_day.sort_by(|a, b| a.label.cmp(&b.label));
+    
+    // Update total_requests from proxy data if available
+    if !requests_by_day.is_empty() {
+        let proxy_total: u64 = requests_by_day.iter().map(|p| p.value).sum();
+        if proxy_total > agg.total_requests {
+            agg.total_requests = proxy_total;
+        }
+    }
+    
+    // Sync model_stats from proxy (source of truth for per-model request/token counts)
+    // Structure: { "apis": { "provider": { "models": { "model-name": { "total_requests": N, "total_tokens": N, "details": [...] } } } } }
+    if let Some(apis) = usage.get("apis").and_then(|v| v.as_object()) {
+        for (_provider, provider_data) in apis {
+            if let Some(models) = provider_data.get("models").and_then(|v| v.as_object()) {
+                for (model_name, model_data) in models {
+                    let total_requests = model_data.get("total_requests").and_then(|v| v.as_u64()).unwrap_or(0);
+                    let total_tokens = model_data.get("total_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
+                    
+                    // Sum up token details from the model's request history
+                    let mut input_tokens: u64 = 0;
+                    let mut output_tokens: u64 = 0;
+                    let mut cached_tokens: u64 = 0;
+                    
+                    if let Some(details) = model_data.get("details").and_then(|v| v.as_array()) {
+                        for detail in details {
+                            if let Some(tokens) = detail.get("tokens").and_then(|v| v.as_object()) {
+                                input_tokens += tokens.get("input_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
+                                output_tokens += tokens.get("output_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
+                                cached_tokens += tokens.get("cached_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
+                            }
+                        }
+                    }
+                    
+                    // Update or insert model stats
+                    let stats = agg.model_stats.entry(model_name.clone()).or_insert_with(Default::default);
+                    stats.requests = total_requests;
+                    stats.success_count = total_requests; // Assume all synced requests succeeded
+                    stats.tokens = total_tokens;
+                    stats.input_tokens = input_tokens;
+                    stats.output_tokens = output_tokens;
+                    stats.cached_tokens = cached_tokens;
+                }
+            }
+        }
+    }
+    
     let _ = save_aggregate(&agg);
     
     Ok(history)

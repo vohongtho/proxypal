@@ -18,6 +18,7 @@ import {
 	showSystemNotification,
 	startProxy,
 	stopProxy,
+	syncUsageFromProxy,
 } from "../lib/tauri";
 
 function createAppStore() {
@@ -200,6 +201,13 @@ function createAppStore() {
 				} catch (error) {
 					console.error("Failed to auto-start proxy:", error);
 				}
+			}
+
+			// Sync usage data from CLIProxyAPI on startup
+			try {
+				await syncUsageFromProxy();
+			} catch (error) {
+				console.error("Failed to sync usage on startup:", error);
 			}
 
 			setIsInitialized(true);
