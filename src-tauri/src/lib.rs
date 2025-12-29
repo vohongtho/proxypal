@@ -6215,6 +6215,19 @@ pub fn run() {
                 }
             });
 
+            // Auto-start Cloudflare tunnels
+            let app_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let config = crate::config::load_config();
+                let cf_manager = app_handle.state::<CloudflareManager>();
+                for cf_config in config.cloudflare_configs {
+                    if cf_config.enabled {
+                        println!("[Cloudflare] Auto-starting tunnel: {}", cf_config.name);
+                        cf_manager.connect(app_handle.clone(), cf_config);
+                    }
+                }
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
