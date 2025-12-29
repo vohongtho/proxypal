@@ -5409,7 +5409,7 @@ async fn get_auth_files(state: State<'_, AppState>) -> Result<Vec<AuthFile>, Str
                     if name.ends_with(".json.disabled") {
                         // This is a disabled auth file
                         if let Ok(content) = std::fs::read_to_string(&path) {
-                            if let Ok(mut json) = serde_json::from_str::<serde_json::Value>(&content) {
+                            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
                                 // Try to extract provider/email for metadata
                                 let provider = json.get("provider")
                                     .and_then(|v| v.as_str())
@@ -5566,15 +5566,15 @@ async fn toggle_auth_file(_state: State<'_, AppState>, file_id: String, disabled
                 .map_err(|e| format!("Failed to disable file: {}", e))?;
         } else {
             // Check if ID already had extension?
-             let enabled_path_asis = auth_dir.join(&file_id);
-             let disabled_path_asis = auth_dir.join(format!("{}.disabled", file_id));
-             
-             if enabled_path_asis.exists() {
-                 std::fs::rename(&enabled_path_asis, &disabled_path_asis)
+            let enabled_path_asis = auth_dir.join(&file_id);
+            let disabled_path_asis = auth_dir.join(format!("{}.disabled", file_id));
+            
+            if enabled_path_asis.exists() {
+                std::fs::rename(&enabled_path_asis, &disabled_path_asis)
                     .map_err(|e| format!("Failed to disable file: {}", e))?;
-             } else {
-                 return Err("File not found to disable".to_string());
-             }
+            } else {
+                return Err("File not found to disable".to_string());
+            }
         }
     } else {
         // Enable: Rename .json.disabled -> .json
@@ -5583,15 +5583,15 @@ async fn toggle_auth_file(_state: State<'_, AppState>, file_id: String, disabled
                 .map_err(|e| format!("Failed to enable file: {}", e))?;
         } else {
             // Check alt path
-             let enabled_path_asis = auth_dir.join(&file_id);
-             let disabled_path_asis = auth_dir.join(format!("{}.disabled", file_id));
-             
-              if disabled_path_asis.exists() {
-                  std::fs::rename(&disabled_path_asis, &enabled_path_asis)
+            let enabled_path_asis = auth_dir.join(&file_id);
+            let disabled_path_asis = auth_dir.join(format!("{}.disabled", file_id));
+            
+            if disabled_path_asis.exists() {
+                std::fs::rename(&disabled_path_asis, &enabled_path_asis)
                     .map_err(|e| format!("Failed to enable file: {}", e))?;
-              } else {
-                  return Err("File not found to enable".to_string());
-              }
+            } else {
+                return Err("File not found to enable".to_string());
+            }
         }
     }
     
