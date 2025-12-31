@@ -58,14 +58,27 @@ impl CloudflareManager {
             emit_status_clone("connecting", Some("Starting tunnel...".into()), None);
             
             loop {
-                // cloudflared tunnel run --token <token> --url http://localhost:<port>
+                // For named tunnels with tokens from Cloudflare Dashboard:
+                // The ingress rules (including URL routing) are configured in the dashboard
+                // So we only need: cloudflared tunnel run --token <token>
+                // 
+                // For quick tunnels (no token, just expose a port):
+                // cloudflared tunnel --url http://localhost:<port>
                 let mut cmd = Command::new("cloudflared");
-                cmd.arg("tunnel");
-                cmd.arg("run");
-                cmd.arg("--token");
-                cmd.arg(&config.tunnel_token);
-                cmd.arg("--url");
-                cmd.arg(format!("http://localhost:{}", config.local_port));
+                
+                if config.tunnel_token.is_empty() {
+                    // Quick tunnel mode - expose local port directly
+                    cmd.arg("tunnel");
+                    cmd.arg("--url");
+                    cmd.arg(format!("http://localhost:{}", config.local_port));
+                } else {
+                    // Named tunnel mode - use token from dashboard
+                    // Ingress rules are configured in Cloudflare Zero Trust dashboard
+                    cmd.arg("tunnel");
+                    cmd.arg("run");
+                    cmd.arg("--token");
+                    cmd.arg(&config.tunnel_token);
+                }
 
                 emit_status_clone("connecting", Some(format!("Connecting to port {}...", config.local_port)), None);
 
@@ -102,20 +115,29 @@ impl CloudflareManager {
                                 while let Ok(Some(line)) = lines.next_line().await {
                                     let line_lower = line.to_lowercase();
                                     
-                                    // Detect successful connection
-                                    if line_lower.contains("connection") && line_lower.contains("registered") {
+                                    // Detect successful connection - cloudflared logs these on success:
+                                    // "INF Connection ... registered" or "INF Registered tunnel connection"
+                                    // "INF Starting tunnel tunnelID=..."
+                                    if (line_lower.contains("connection") && line_lower.contains("registered"))
+                                        || (line_lower.contains("registered") && line_lower.contains("tunnel"))
+                                        || (line_lower.contains("starting tunnel") && line_lower.contains("tunnelid"))
+                                    {
                                         emit_output("connected", Some("Tunnel established".into()), detected_url.clone());
                                     } else if line_lower.contains("tunnel url:") || line.contains(".trycloudflare.com") || line.contains(".cfargotunnel.com") {
-                                        // Extract URL from log
+                                        // Extract URL from log (for quick tunnels)
                                         if let Some(url_start) = line.find("https://") {
                                             let url = line[url_start..].split_whitespace().next().unwrap_or("");
                                             detected_url = Some(url.to_string());
                                             emit_output("connected", Some("Tunnel ready".into()), detected_url.clone());
                                         }
-                                    } else if line_lower.contains("failed") || line_lower.contains("error") {
+                                    } else if line_lower.contains("failed") || (line_lower.contains("error") && !line_lower.contains("loglevel")) {
+                                        // Ignore "loglevel" mentions which are just config info
                                         emit_output("error", Some(line.clone()), None);
                                     } else if line_lower.contains("ingress") && line_lower.contains("registered") {
                                         emit_output("connected", Some("Tunnel active".into()), detected_url.clone());
+                                    } else if line_lower.contains("initial protocol") || line_lower.contains("connector id") {
+                                        // These indicate successful startup
+                                        emit_output("connected", Some("Tunnel connected".into()), detected_url.clone());
                                     }
                                 }
                             }

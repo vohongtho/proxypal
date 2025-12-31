@@ -3940,7 +3940,7 @@ export function SettingsPage() {
 									</div>
 									<div class="space-y-1">
 										<label class="text-xs font-medium text-gray-500 uppercase">
-											Local Port
+											Local Port (Reference)
 										</label>
 										<input
 											class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
@@ -3951,6 +3951,9 @@ export function SettingsPage() {
 												setCfLocalPort(parseInt(e.currentTarget.value) || 8317)
 											}
 										/>
+										<p class="text-[10px] text-gray-400">
+											Configure actual port in Cloudflare dashboard
+										</p>
 									</div>
 								</div>
 								<div class="space-y-1">
@@ -3995,11 +3998,55 @@ export function SettingsPage() {
 									on your system
 								</li>
 								<li>
-									Go to Cloudflare Zero Trust Dashboard → Access → Tunnels
+									Go to{" "}
+									<a
+										href="https://one.dash.cloudflare.com/"
+										target="_blank"
+										rel="noopener noreferrer"
+										class="text-blue-500 hover:underline"
+									>
+										Cloudflare Zero Trust Dashboard
+									</a>{" "}
+									→ Networks → Tunnels
 								</li>
 								<li>Create a new tunnel and copy the token</li>
+								<li>
+									<strong class="text-gray-900 dark:text-white">
+										Important:
+									</strong>{" "}
+									Configure a <strong>Public Hostname</strong> in the tunnel
+									settings:
+									<ul class="list-disc list-inside ml-4 mt-1 space-y-1">
+										<li>
+											Subdomain: your choice (e.g.,{" "}
+											<code class="bg-gray-200 dark:bg-gray-700 px-1 rounded">
+												proxy
+											</code>
+											)
+										</li>
+										<li>Domain: select your domain</li>
+										<li>
+											Service Type:{" "}
+											<code class="bg-gray-200 dark:bg-gray-700 px-1 rounded">
+												HTTP
+											</code>
+										</li>
+										<li>
+											URL:{" "}
+											<code class="bg-gray-200 dark:bg-gray-700 px-1 rounded">
+												localhost:8317
+											</code>{" "}
+											(or your proxy port)
+										</li>
+									</ul>
+								</li>
 								<li>Paste the token above and enable the tunnel</li>
 							</ol>
+							<p class="mt-3 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg">
+								<strong>Note:</strong> The port routing is configured in the
+								Cloudflare dashboard, not in ProxyPal. The "Local Port" field
+								above is for reference only.
+							</p>
 						</div>
 					</div>
 
