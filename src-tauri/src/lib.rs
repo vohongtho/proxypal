@@ -1311,18 +1311,25 @@ async fn start_copilot(
             copilot_bin,
             detection.version.as_ref().map(|v| format!(" v{}", v)).unwrap_or_default());
         (copilot_bin, vec![])
+    } else if let Some(bunx_bin) = detection.bunx_bin.clone() {
+        // Prefer bunx since copilot-api is now a Bun package (requires Bun >= 1.2.x)
+        println!("[copilot] Using bunx: {} copilot-api start", bunx_bin);
+        (bunx_bin, vec!["copilot-api".to_string()])
     } else if let Some(npx_bin) = detection.npx_bin.clone() {
-        // Prefer npx over bunx for downloading packages (more reliable)
+        // Fallback to npx (may work with older versions)
         println!("[copilot] Using npx: {} copilot-api@latest", npx_bin);
         (npx_bin, vec!["copilot-api@latest".to_string()])
-    } else if let Some(bunx_bin) = detection.bunx_bin.clone() {
-        // Fallback to bunx
-        println!("[copilot] Using bunx: {} copilot-api@latest", bunx_bin);
-        (bunx_bin, vec!["copilot-api@latest".to_string()])
     } else {
         return Err(
-            "Neither npx nor bunx found (required to run copilot-api).\n\n\
-            Install Node.js (https://nodejs.org/) or bun (https://bun.sh) and restart ProxyPal.".to_string()
+            "Could not start GitHub Copilot bridge.\n\n\
+            The copilot-api package now requires Bun (recommended) or Node.js.\n\n\
+            Option 1 - Install Bun (recommended):\n\
+            • macOS/Linux: curl -fsSL https://bun.sh/install | bash\n\
+            • Then restart ProxyPal\n\n\
+            Option 2 - Run manually in terminal:\n\
+            • bunx copilot-api start --port 4141\n\
+            • Or: npx copilot-api@latest start --port 4141\n\n\
+            For more info: https://github.com/ericc-ch/copilot-api".to_string()
         );
     };
     

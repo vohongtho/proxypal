@@ -305,6 +305,14 @@ export function CopilotCard(props: CopilotCardProps) {
 									<p class="text-xs text-red-700 dark:text-red-300 mt-1 whitespace-pre-wrap">
 										{startError()}
 									</p>
+									<div class="mt-2 p-2 bg-red-100 dark:bg-red-900/30 rounded text-xs text-red-700 dark:text-red-300">
+										<p class="font-medium">
+											💡 Quick fix - run manually in terminal:
+										</p>
+										<code class="block mt-1 font-mono text-red-800 dark:text-red-200">
+											bunx copilot-api start --port 4141
+										</code>
+									</div>
 									<p class="text-xs text-red-600 dark:text-red-400 mt-2">
 										Go to{" "}
 										<a
