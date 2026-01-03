@@ -26,13 +26,13 @@ import {
 	detectCliAgents,
 	disconnectProvider,
 	fetchAntigravityQuota,
+	getOAuthUrl,
 	getUsageStats,
 	importVertexCredential,
+	type OAuthUrlResponse,
 	onRequestLog,
-	getOAuthUrl,
 	openUrlInBrowser,
 	type Provider,
-	type OAuthUrlResponse,
 	pollOAuthStatus,
 	refreshAuthStatus,
 	startProxy,
@@ -169,12 +169,15 @@ export function DashboardPage() {
 	const [stats, setStats] = createSignal<UsageStats | null>(null);
 
 	// OAuth Modal state
-	const [oauthModalProvider, setOauthModalProvider] = createSignal<Provider | null>(null);
-	const [oauthUrlData, setOauthUrlData] = createSignal<OAuthUrlResponse | null>(null);
+	const [oauthModalProvider, setOauthModalProvider] =
+		createSignal<Provider | null>(null);
+	const [oauthUrlData, setOauthUrlData] = createSignal<OAuthUrlResponse | null>(
+		null,
+	);
 	const [oauthLoading, setOauthLoading] = createSignal(false);
 
 	const getProviderName = (provider: Provider): string => {
-		const found = providers.find(p => p.provider === provider);
+		const found = providers.find((p) => p.provider === provider);
 		return found?.name || provider;
 	};
 
@@ -372,7 +375,25 @@ export function DashboardPage() {
 					const completed = await pollOAuthStatus(urlData.state);
 					if (completed) {
 						clearInterval(pollInterval);
-						const newAuth = await refreshAuthStatus();
+						// Add delay to ensure file is written before scanning
+						await new Promise((resolve) => setTimeout(resolve, 500));
+
+						// Get current count for this provider to detect new auth
+						const currentAuth = authStatus();
+						const currentCount = currentAuth[provider] || 0;
+
+						// Retry refresh up to 3 times with delay if count doesn't increase
+						let newAuth = await refreshAuthStatus();
+						let retries = 0;
+						while ((newAuth[provider] || 0) <= currentCount && retries < 3) {
+							await new Promise((resolve) => setTimeout(resolve, 500));
+							newAuth = await refreshAuthStatus();
+							retries++;
+							console.log(
+								`Auth refresh retry ${retries}, count: ${newAuth[provider]}`,
+							);
+						}
+
 						setAuthStatus(newAuth);
 						setOauthLoading(false);
 						setOauthModalProvider(null);
@@ -417,7 +438,25 @@ export function DashboardPage() {
 		try {
 			const completed = await pollOAuthStatus(urlData.state);
 			if (completed) {
-				const newAuth = await refreshAuthStatus();
+				// Add delay to ensure file is written before scanning
+				await new Promise((resolve) => setTimeout(resolve, 500));
+
+				// Get current count for this provider to detect new auth
+				const currentAuth = authStatus();
+				const currentCount = currentAuth[provider] || 0;
+
+				// Retry refresh up to 3 times with delay if count doesn't increase
+				let newAuth = await refreshAuthStatus();
+				let retries = 0;
+				while ((newAuth[provider] || 0) <= currentCount && retries < 3) {
+					await new Promise((resolve) => setTimeout(resolve, 500));
+					newAuth = await refreshAuthStatus();
+					retries++;
+					console.log(
+						`Auth refresh retry ${retries}, count: ${newAuth[provider]}`,
+					);
+				}
+
 				setAuthStatus(newAuth);
 				setOauthLoading(false);
 				setOauthModalProvider(null);
@@ -1108,7 +1147,9 @@ export function DashboardPage() {
 			{/* OAuth Modal */}
 			<OAuthModal
 				provider={oauthModalProvider()}
-				providerName={oauthModalProvider() ? getProviderName(oauthModalProvider()!) : ""}
+				providerName={
+					oauthModalProvider() ? getProviderName(oauthModalProvider()!) : ""
+				}
 				authUrl={oauthUrlData()?.url || ""}
 				onStartOAuth={handleStartOAuth}
 				onCancel={handleCancelOAuth}
@@ -1788,4 +1829,3 @@ function QuotaWidget(props: { authStatus: { antigravity: number } }) {
 		</div>
 	);
 }
-
