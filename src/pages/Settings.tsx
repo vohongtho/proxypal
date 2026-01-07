@@ -47,6 +47,7 @@ import {
 	getAvailableModels,
 	getClaudeCodeSettings,
 	getCloseToTray,
+	getConfig,
 	getConfigYaml,
 	getForceModelMappings,
 	getLogSize,
@@ -259,6 +260,11 @@ export function SettingsPage() {
 		createSignal<ThinkingBudgetSettings["mode"]>("medium");
 	const [thinkingBudgetCustom, setThinkingBudgetCustom] = createSignal(16000);
 	const [savingThinkingBudget, setSavingThinkingBudget] = createSignal(false);
+
+	// Gemini thinking config injection toggle
+	const [geminiThinkingInjection, setGeminiThinkingInjection] =
+		createSignal<boolean>(true);
+	const [savingGeminiThinking, setSavingGeminiThinking] = createSignal(false);
 
 	// Reasoning Effort settings for GPT/Codex models (used in CLI agent configs)
 	const [reasoningEffortLevel, setReasoningEffortLevel] =
@@ -662,6 +668,17 @@ export function SettingsPage() {
 				console.error("Failed to fetch thinking budget settings:", error);
 			}
 
+			// Fetch Gemini thinking injection setting
+			try {
+				const config = await getConfig();
+				setGeminiThinkingInjection(config.geminiThinkingInjection ?? true);
+			} catch (error) {
+				console.error(
+					"Failed to fetch Gemini thinking injection setting:",
+					error,
+				);
+			}
+
 			// Fetch reasoning effort settings for GPT/Codex models
 			try {
 				const reasoningSettings = await getReasoningEffortSettings();
@@ -1062,6 +1079,24 @@ export function SettingsPage() {
 			toastStore.error("Failed to save thinking budget", String(error));
 		} finally {
 			setSavingThinkingBudget(false);
+		}
+	};
+
+	// Save Gemini thinking injection setting
+	const saveGeminiThinkingInjection = async (enabled: boolean) => {
+		setSavingGeminiThinking(true);
+		try {
+			const currentConfig = await getConfig();
+			await saveConfig({ ...currentConfig, geminiThinkingInjection: enabled });
+			setGeminiThinkingInjection(enabled);
+			toastStore.success(
+				`Gemini thinking config injection ${enabled ? "enabled" : "disabled"}`,
+			);
+		} catch (error) {
+			console.error("Failed to save Gemini thinking injection:", error);
+			toastStore.error("Failed to save setting", String(error));
+		} finally {
+			setSavingGeminiThinking(false);
 		}
 	};
 
@@ -1836,6 +1871,25 @@ export function SettingsPage() {
 									>
 										{savingThinkingBudget() ? "Saving..." : "Apply"}
 									</Button>
+								</div>
+
+								{/* Gemini Thinking Injection Toggle */}
+								<div class="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+									<div class="flex-1">
+										<span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+											Gemini Thinking Config Injection
+										</span>
+										<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+											When enabled, ProxyPal injects thinking config for Gemini
+											3 models. Disable if you want to control thinking_config
+											in your requests.
+										</p>
+									</div>
+									<Switch
+										checked={geminiThinkingInjection()}
+										onChange={(checked) => saveGeminiThinkingInjection(checked)}
+										disabled={savingGeminiThinking()}
+									/>
 								</div>
 							</div>
 						</div>

@@ -60,6 +60,8 @@ pub struct AppConfig {
     pub thinking_budget_mode: String,
     #[serde(default)]
     pub thinking_budget_custom: u32,
+    #[serde(default = "default_gemini_thinking_injection")]
+    pub gemini_thinking_injection: bool,
     #[serde(default)]
     pub reasoning_effort_level: String,
     #[serde(default = "default_close_to_tray")]
@@ -108,6 +110,10 @@ fn default_routing_strategy() -> String {
     "round-robin".to_string()
 }
 
+fn default_gemini_thinking_injection() -> bool {
+    true
+}
+
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
@@ -138,6 +144,7 @@ impl Default for AppConfig {
             vertex_api_keys: Vec::new(),
             thinking_budget_mode: "medium".to_string(),
             thinking_budget_custom: 16000,
+            gemini_thinking_injection: true,
             reasoning_effort_level: "medium".to_string(),
             close_to_tray: true,
             max_retry_interval: 0,

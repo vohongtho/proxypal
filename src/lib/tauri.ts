@@ -303,6 +303,7 @@ export interface AppConfig {
 	managementKey?: string; // Management API key for internal proxy calls
 	commercialMode?: boolean; // Disable request logging for lower memory usage
 	wsAuth?: boolean; // Require authentication for WebSocket connections
+	geminiThinkingInjection?: boolean; // Inject thinking config for Gemini 3 models
 	sshConfigs?: SshConfig[];
 	cloudflareConfigs?: CloudflareConfig[];
 }

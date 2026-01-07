@@ -910,9 +910,28 @@ async fn start_proxy(
         _ => "high",  // 32768 or custom -> high
     };
     
+    // Conditionally build Gemini thinking config override section
+    let gemini_override_section = if config.gemini_thinking_injection {
+        format!(r#"  override:
+    # Gemini 3 models - thinking level (uses override, not default)
+    - models:
+        - name: "gemini-3-pro-preview*"
+      params:
+        generationConfig.thinkingConfig.thinkingLevel: "{}"
+        generationConfig.thinkingConfig.includeThoughts: true
+    - models:
+        - name: "gemini-3-flash-preview*"
+      params:
+        generationConfig.thinkingConfig.thinkingLevel: "{}"
+        generationConfig.thinkingConfig.includeThoughts: true
+"#, gemini3_thinking_level, gemini3_thinking_level)
+    } else {
+        String::new()
+    };
+    
     let payload_section = format!(r#"# Payload injection for thinking models
 # Antigravity Claude: Thinking budget mode: {} ({} tokens)
-# Gemini 3: Thinking level: {}
+# Gemini 3: Thinking injection: {}
 payload:
   default:
     # Antigravity Claude models - thinking budget
@@ -930,27 +949,14 @@ payload:
           protocol: "claude"
       params:
         "thinking.budget_tokens": {}
-  override:
-    # Gemini 3 models - thinking level (uses override, not default)
-    - models:
-        - name: "gemini-3-pro-preview*"
-      params:
-        generationConfig.thinkingConfig.thinkingLevel: "{}"
-        generationConfig.thinkingConfig.includeThoughts: true
-    - models:
-        - name: "gemini-3-flash-preview*"
-      params:
-        generationConfig.thinkingConfig.thinkingLevel: "{}"
-        generationConfig.thinkingConfig.includeThoughts: true
-
+{}
 "#, 
         thinking_mode_display,
         thinking_budget,
-        gemini3_thinking_level,
+        if config.gemini_thinking_injection { format!("enabled ({})", gemini3_thinking_level) } else { "disabled".to_string() },
         thinking_budget,
         thinking_budget,
-        gemini3_thinking_level,
-        gemini3_thinking_level
+        gemini_override_section
     );
     
     // Build routing section based on config
