@@ -40,3 +40,24 @@ pub struct AntigravityQuotaResult {
     pub fetched_at: String,
     pub error: Option<String>,
 }
+
+/// Codex/ChatGPT Usage API Types (from chatgpt.com/backend-api/wham/usage)
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexQuotaResult {
+    pub account_email: String,
+    /// Plan type: "free", "plus", "pro", "team", etc.
+    pub plan_type: String,
+    /// Primary rate limit window (usually 3-hour window)
+    pub primary_used_percent: f64,
+    pub primary_reset_at: Option<i64>,
+    /// Secondary rate limit window (usually weekly)
+    pub secondary_used_percent: f64,
+    pub secondary_reset_at: Option<i64>,
+    /// Credits balance (for Pro plans)
+    pub has_credits: bool,
+    pub credits_balance: Option<f64>,
+    pub credits_unlimited: bool,
+    pub fetched_at: String,
+    pub error: Option<String>,
+}

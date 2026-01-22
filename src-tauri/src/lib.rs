@@ -735,6 +735,7 @@ async fn start_proxy(
             let mut entry = format!("  # Custom OpenAI-compatible provider: {}\n", provider.name);
             entry.push_str(&format!("  - name: \"{}\"\n", provider.name));
             entry.push_str(&format!("    base-url: \"{}\"\n", provider.base_url));
+            entry.push_str("    schema-cleaner: true\n");
             entry.push_str("    api-key-entries:\n");
             entry.push_str(&format!("      - api-key: \"{}\"\n", provider.api_key));
             
@@ -755,6 +756,7 @@ async fn start_proxy(
         let mut entry = String::from("  # GitHub Copilot GPT/OpenAI models (via copilot-api)\n");
         entry.push_str(&format!("  - name: \"copilot\"\n"));
         entry.push_str(&format!("    base-url: \"http://localhost:{}/v1\"\n", port));
+        entry.push_str("    schema-cleaner: true\n");
         entry.push_str("    api-key-entries:\n");
         entry.push_str("      - api-key: \"dummy\"\n");
         entry.push_str("    models:\n");
@@ -858,6 +860,7 @@ async fn start_proxy(
         let mut section = String::from("# Gemini API keys\ngemini-api-key:\n");
         for key in &config.gemini_api_keys {
             section.push_str(&format!("  - api-key: \"{}\"\n", key.api_key));
+            section.push_str("    signature-cache: true\n");
             if let Some(ref base_url) = key.base_url {
                 section.push_str(&format!("    base-url: \"{}\"\n", base_url));
             }
@@ -3672,6 +3675,171 @@ async fn fetch_antigravity_quota() -> Result<Vec<types::AntigravityQuotaResult>,
                         quotas: vec![],
                         fetched_at: chrono::Local::now().to_rfc3339(),
                         error: last_error.or(Some("All API endpoints failed".to_string())),
+                    });
+                }
+            }
+        }
+    }
+    
+    Ok(results)
+}
+
+// Fetch Codex/ChatGPT quota and usage for all authenticated accounts
+// Uses the ChatGPT internal API: https://chatgpt.com/backend-api/wham/usage
+#[tauri::command]
+async fn fetch_codex_quota() -> Result<Vec<types::CodexQuotaResult>, String> {
+    let home = dirs::home_dir().ok_or("Could not determine home directory")?;
+    let auth_dir = home.join(".cli-proxy-api");
+    
+    let mut results: Vec<types::CodexQuotaResult> = Vec::new();
+    
+    if !auth_dir.exists() {
+        return Ok(results);
+    }
+    
+    // Find all codex-*.json files
+    let entries = std::fs::read_dir(&auth_dir)
+        .map_err(|e| format!("Failed to read auth directory: {}", e))?;
+    
+    for entry in entries.flatten() {
+        let filename = entry.file_name().to_string_lossy().to_string();
+        if filename.starts_with("codex-") && filename.ends_with(".json") {
+            let file_path = entry.path();
+            
+            // Read and parse the credential file
+            let content = match std::fs::read_to_string(&file_path) {
+                Ok(c) => c,
+                Err(e) => {
+                    eprintln!("Failed to read codex credential file: {}", e);
+                    continue;
+                }
+            };
+            
+            let cred: serde_json::Value = match serde_json::from_str(&content) {
+                Ok(v) => v,
+                Err(e) => {
+                    eprintln!("Failed to parse codex credential file: {}", e);
+                    continue;
+                }
+            };
+            
+            let email = cred["email"].as_str().unwrap_or("unknown").to_string();
+            let access_token = match cred["access_token"].as_str() {
+                Some(t) => t,
+                None => {
+                    results.push(types::CodexQuotaResult {
+                        account_email: email,
+                        plan_type: "unknown".to_string(),
+                        primary_used_percent: 0.0,
+                        primary_reset_at: None,
+                        secondary_used_percent: 0.0,
+                        secondary_reset_at: None,
+                        has_credits: false,
+                        credits_balance: None,
+                        credits_unlimited: false,
+                        fetched_at: chrono::Local::now().to_rfc3339(),
+                        error: Some("No access token found".to_string()),
+                    });
+                    continue;
+                }
+            };
+            
+            // Get optional account_id for multi-workspace support
+            let account_id = cred["account_id"].as_str();
+            
+            // Fetch usage from ChatGPT internal API
+            let client = reqwest::Client::new();
+            let url = "https://chatgpt.com/backend-api/wham/usage";
+            
+            let mut request = client
+                .get(url)
+                .header("Authorization", format!("Bearer {}", access_token))
+                .header("Accept", "application/json")
+                .header("User-Agent", "ProxyPal");
+            
+            // Add ChatGPT-Account-Id header if available (for multi-workspace support)
+            if let Some(acct_id) = account_id {
+                request = request.header("ChatGPT-Account-Id", acct_id);
+            }
+            
+            let response = request.send().await;
+            
+            match response {
+                Ok(resp) => {
+                    if resp.status().is_success() {
+                        let body: serde_json::Value = resp.json().await.unwrap_or_default();
+                        
+                        // Parse the ChatGPT usage response
+                        // Expected format:
+                        // {
+                        //   "plan_type": "pro",
+                        //   "rate_limit": {
+                        //     "primary_window": { "used_percent": 42, "reset_at": 1737561600, "limit_window_seconds": 18000 },
+                        //     "secondary_window": { "used_percent": 10, "reset_at": 1737561600, "limit_window_seconds": 604800 }
+                        //   },
+                        //   "credits": { "has_credits": true, "unlimited": false, "balance": 10.50 }
+                        // }
+                        
+                        let plan_type = body["plan_type"].as_str().unwrap_or("unknown").to_string();
+                        
+                        let rate_limit = &body["rate_limit"];
+                        let primary = &rate_limit["primary_window"];
+                        let secondary = &rate_limit["secondary_window"];
+                        
+                        let primary_used_percent = primary["used_percent"].as_f64().unwrap_or(0.0);
+                        let primary_reset_at = primary["reset_at"].as_i64();
+                        let secondary_used_percent = secondary["used_percent"].as_f64().unwrap_or(0.0);
+                        let secondary_reset_at = secondary["reset_at"].as_i64();
+                        
+                        let credits = &body["credits"];
+                        let has_credits = credits["has_credits"].as_bool().unwrap_or(false);
+                        let credits_balance = credits["balance"].as_f64();
+                        let credits_unlimited = credits["unlimited"].as_bool().unwrap_or(false);
+                        
+                        results.push(types::CodexQuotaResult {
+                            account_email: email,
+                            plan_type,
+                            primary_used_percent,
+                            primary_reset_at,
+                            secondary_used_percent,
+                            secondary_reset_at,
+                            has_credits,
+                            credits_balance,
+                            credits_unlimited,
+                            fetched_at: chrono::Local::now().to_rfc3339(),
+                            error: None,
+                        });
+                    } else {
+                        let status = resp.status();
+                        let error_body = resp.text().await.unwrap_or_default();
+                        results.push(types::CodexQuotaResult {
+                            account_email: email,
+                            plan_type: "unknown".to_string(),
+                            primary_used_percent: 0.0,
+                            primary_reset_at: None,
+                            secondary_used_percent: 0.0,
+                            secondary_reset_at: None,
+                            has_credits: false,
+                            credits_balance: None,
+                            credits_unlimited: false,
+                            fetched_at: chrono::Local::now().to_rfc3339(),
+                            error: Some(format!("API error {}: {}", status, error_body)),
+                        });
+                    }
+                }
+                Err(e) => {
+                    results.push(types::CodexQuotaResult {
+                        account_email: email,
+                        plan_type: "unknown".to_string(),
+                        primary_used_percent: 0.0,
+                        primary_reset_at: None,
+                        secondary_used_percent: 0.0,
+                        secondary_reset_at: None,
+                        has_credits: false,
+                        credits_balance: None,
+                        credits_unlimited: false,
+                        fetched_at: chrono::Local::now().to_rfc3339(),
+                        error: Some(format!("Request failed: {}", e)),
                     });
                 }
             }
@@ -7060,6 +7228,7 @@ pub fn run() {
             complete_oauth,
             disconnect_provider,
             fetch_antigravity_quota,
+            fetch_codex_quota,
             import_vertex_credential,
             commands::config::get_config,
             commands::config::save_config,

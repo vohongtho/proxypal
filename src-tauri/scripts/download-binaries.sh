@@ -77,15 +77,15 @@ if [ -n "$BINARY_NAME" ]; then
 		tar -xzf "$ASSET_NAME"
 	fi
 
-	# Find and copy the binary
-	if [ -f "CLIProxyAPI" ]; then
-		cp "CLIProxyAPI" "$BINARIES_DIR/$BINARY_NAME"
+	# Find the binary (it might be in a nested folder)
+	BINARY_FILE=$(find . -maxdepth 2 -name "CLIProxyAPI*" -type f \( -perm -u+x -o -name "*.exe" \) | head -n 1)
+
+	if [ -n "$BINARY_FILE" ]; then
+		cp "$BINARY_FILE" "$BINARIES_DIR/$BINARY_NAME"
 		chmod +x "$BINARIES_DIR/$BINARY_NAME"
-	elif [ -f "CLIProxyAPI.exe" ]; then
-		cp "CLIProxyAPI.exe" "$BINARIES_DIR/$BINARY_NAME"
 	else
 		echo "Binary not found in archive"
-		ls -la
+		ls -R
 		exit 1
 	fi
 

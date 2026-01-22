@@ -318,6 +318,7 @@ export interface AppConfig {
 	sshConfigs?: SshConfig[];
 	cloudflareConfigs?: CloudflareConfig[];
 	disableControlPanel?: boolean; // Hide CLIProxyAPI's web management UI
+	sidebarPinned?: boolean;
 }
 
 export async function getConfig(): Promise<AppConfig> {
@@ -1280,10 +1281,28 @@ export interface AntigravityQuotaResult {
 	error?: string;
 }
 
+export interface CodexQuotaResult {
+	accountEmail: string;
+	planType: string;
+	primaryUsedPercent: number;
+	primaryResetAt?: number;
+	secondaryUsedPercent: number;
+	secondaryResetAt?: number;
+	hasCredits: boolean;
+	creditsBalance?: number;
+	creditsUnlimited: boolean;
+	fetchedAt: string;
+	error?: string;
+}
+
 export async function fetchAntigravityQuota(): Promise<
 	AntigravityQuotaResult[]
 > {
 	return invoke("fetch_antigravity_quota");
+}
+
+export async function fetchCodexQuota(): Promise<CodexQuotaResult[]> {
+	return invoke("fetch_codex_quota");
 }
 
 // ============================================

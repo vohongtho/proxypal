@@ -77,6 +77,8 @@ pub struct AppConfig {
     #[serde(default)]
     pub ws_auth: bool,
     #[serde(default)]
+    pub sidebar_pinned: bool,
+    #[serde(default)]
     pub ssh_configs: Vec<SshConfig>,
     #[serde(default)]
     pub cloudflare_configs: Vec<CloudflareConfig>,
@@ -141,6 +143,7 @@ impl Default for AppConfig {
             amp_openai_provider: None,
             amp_openai_providers: Vec::new(),
             amp_routing_mode: "mappings".to_string(),
+            sidebar_pinned: false,
             routing_strategy: "round-robin".to_string(),
             copilot: CopilotConfig::default(),
             force_model_mappings: true,

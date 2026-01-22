@@ -616,10 +616,11 @@ export function Analytics() {
 								{(preset) => (
 									<button
 										onClick={() => handlePresetChange(preset.value)}
-										class={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${datePreset() === preset.value
+										class={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+											datePreset() === preset.value
 												? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm"
 												: "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-											}`}
+										}`}
 									>
 										{preset.label}
 									</button>
@@ -635,10 +636,11 @@ export function Analytics() {
 						{/* Privacy Toggle */}
 						<button
 							onClick={() => setPrivacyMode(!privacyMode())}
-							class={`p-1.5 rounded-lg border transition-colors ${privacyMode()
+							class={`p-1.5 rounded-lg border transition-colors ${
+								privacyMode()
 									? "bg-purple-100 dark:bg-purple-900/30 border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400"
 									: "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
-								}`}
+							}`}
 							title={
 								privacyMode() ? "Show sensitive data" : "Hide sensitive data"
 							}
@@ -779,17 +781,23 @@ export function Analytics() {
 								</li>
 								<li class="flex items-start gap-2">
 									<span class="text-green-500 mt-0.5">✓</span>
-									<span>Your AI tool is configured to use <code class="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">http://localhost:8317/v1</code></span>
+									<span>
+										Your AI tool is configured to use{" "}
+										<code class="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">
+											http://localhost:8317/v1
+										</code>
+									</span>
 								</li>
 								<li class="flex items-start gap-2">
 									<span class="text-green-500 mt-0.5">✓</span>
-									<span>You've made at least one request from your AI tool</span>
+									<span>
+										You've made at least one request from your AI tool
+									</span>
 								</li>
 							</ul>
 						</div>
 					</div>
 				</Show>
-
 
 				{/* Loading state */}
 				<Show when={loading()}>
@@ -816,7 +824,7 @@ export function Analytics() {
 						/>
 						<StatCard
 							title="Success Rate"
-							value={`${successRate()}%`}
+							value={`${Math.min(100, successRate())}%`}
 							subtitle={`${formatNumber(stats()!.failureCount)} failed`}
 							icon="check"
 							colorClass="bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800/50 text-blue-700 dark:text-blue-300"

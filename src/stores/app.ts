@@ -58,6 +58,7 @@ function createAppStore() {
 		requestLogging: false,
 		loggingToFile: false,
 		logsMaxTotalSizeMb: 100,
+		sidebarPinned: false,
 		ampApiKey: "",
 		ampModelMappings: [],
 		ampOpenaiProvider: undefined,
