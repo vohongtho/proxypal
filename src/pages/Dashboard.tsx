@@ -75,7 +75,7 @@ const providers = [
 	{
 		name: "Kiro",
 		provider: "kiro" as Provider,
-		logo: "/logos/kiro.png",
+		logo: "/logos/kiro.svg",
 	},
 ];
 
@@ -2600,7 +2600,7 @@ function KiroQuotaWidget() {
 				<div class="flex items-center justify-between mb-4">
 					<div class="flex items-center gap-3">
 						<div class="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center">
-							<img src="/logos/kiro.png" class="w-6 h-6" alt="Kiro" />
+							<img src="/logos/kiro.svg" class="w-6 h-6" alt="Kiro" />
 						</div>
 						<div>
 							<h3 class="text-base font-bold text-gray-900 dark:text-gray-100">

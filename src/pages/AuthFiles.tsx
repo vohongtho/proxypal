@@ -35,6 +35,7 @@ const providerIcons: Record<string, string> = {
 	qwen: "/logos/qwen.svg",
 	iflow: "/logos/iflow.svg",
 	vertex: "/logos/vertex.svg",
+	kiro: "/logos/kiro.svg",
 	antigravity: "/logos/antigravity.webp",
 };
 

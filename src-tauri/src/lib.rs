@@ -3386,6 +3386,7 @@ async fn disconnect_provider(
                     "qwen" => filename.starts_with("qwen-"),
                     "iflow" => filename.starts_with("iflow-"),
                     "vertex" => filename.starts_with("vertex-"),
+                    "kiro" => filename.starts_with("kiro-"),
                     "antigravity" => filename.starts_with("antigravity-"),
                     _ => false,
                 };
@@ -3408,6 +3409,7 @@ async fn disconnect_provider(
         "qwen" => auth.qwen = 0,
         "iflow" => auth.iflow = 0,
         "vertex" => auth.vertex = 0,
+        "kiro" => auth.kiro = 0,
         "antigravity" => auth.antigravity = 0,
         _ => return Err(format!("Unknown provider: {}", provider)),
     }
@@ -4050,17 +4052,94 @@ async fn fetch_copilot_quota_with_token(token: &str, login: &str) -> types::Copi
 
 #[tauri::command]
 async fn fetch_kiro_quota() -> Result<Vec<types::quota::KiroQuotaResult>, String> {
-    // For now, return a placeholder as Kiro API for credits is not public
-    // Users can see their credits on app.kiro.dev
-    Ok(vec![types::quota::KiroQuotaResult {
-        account_email: "Kiro Subscription".to_string(),
-        plan: "Manual check required".to_string(),
-        total_credits: 0.0,
-        used_credits: 0.0,
-        used_percent: 0.0,
-        fetched_at: chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
-        error: Some("Kiro quota tracking coming soon. Check app.kiro.dev for credits.".to_string()),
-    }])
+    use std::process::Command;
+    use regex::Regex;
+
+    // Run kiro-cli chat --no-interactive "/usage"
+    // We assume kiro-cli is in the PATH
+    let output = Command::new("kiro-cli")
+        .args(&["chat", "--no-interactive", "/usage"])
+        .output();
+
+    match output {
+        Ok(out) if out.status.success() => {
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            // Strip ANSI escape sequences (colors, etc)
+            let re_ansi = Regex::new(r"\x1B\[[0-9;]*[mK]").unwrap();
+            let clean_text = re_ansi.replace_all(&stdout, "");
+
+            let mut result = types::quota::KiroQuotaResult {
+                account_email: "Kiro Account".to_string(),
+                plan: "Unknown".to_string(),
+                total_credits: 0.0,
+                used_credits: 0.0,
+                used_percent: 0.0,
+                fetched_at: chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+                error: None,
+            };
+
+            // Parse Plan: | KIRO FREE or | KIRO PRO
+            let re_plan = Regex::new(r"\|\s*(KIRO\s+\w+)").unwrap();
+            if let Some(cap) = re_plan.captures(&clean_text) {
+                result.plan = cap[1].to_string();
+            }
+
+            // Parse Credits: (12.50 of 50 covered in plan)
+            let re_credits = Regex::new(r"\((\d+\.?\d*)\s+of\s+(\d+)\s+covered").unwrap();
+            if let Some(cap) = re_credits.captures(&clean_text) {
+                let used: f64 = cap[1].parse().unwrap_or(0.0);
+                let total: f64 = cap[2].parse().unwrap_or(0.0);
+                result.used_credits = used;
+                result.total_credits = total;
+                if total > 0.0 {
+                    result.used_percent = (used / total) * 100.0;
+                }
+            }
+
+            // Fallback for bonus credits if needed
+            let re_bonus = Regex::new(r"Bonus credits:\s*(\d+\.?\d*)/(\d+)").unwrap();
+            if let Some(cap) = re_bonus.captures(&clean_text) {
+                 let bonus_used: f64 = cap[1].parse().unwrap_or(0.0);
+                 let bonus_total: f64 = cap[2].parse().unwrap_or(0.0);
+                 // If we have bonus credits, we can add them or show them. 
+                 // For now let's just stick to the main plan pool for simplicity, 
+                 // but we'll include them in the used/total if the main ones weren't found.
+                 if result.total_credits == 0.0 {
+                     result.used_credits = bonus_used;
+                     result.total_credits = bonus_total;
+                     if bonus_total > 0.0 {
+                         result.used_percent = (bonus_used / bonus_total) * 100.0;
+                     }
+                 }
+            }
+
+            Ok(vec![result])
+        }
+        Ok(out) => {
+            let stderr = String::from_utf8_lossy(&out.stderr);
+            Ok(vec![types::quota::KiroQuotaResult {
+                account_email: "Kiro Subscription".to_string(),
+                plan: "Error".to_string(),
+                total_credits: 0.0,
+                used_credits: 0.0,
+                used_percent: 0.0,
+                fetched_at: chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+                error: Some(format!("kiro-cli failed: {}", stderr)),
+            }])
+        }
+        Err(_) => {
+            // CLI not installed or not in PATH
+            Ok(vec![types::quota::KiroQuotaResult {
+                account_email: "Kiro Subscription".to_string(),
+                plan: "CLI Not Found".to_string(),
+                total_credits: 0.0,
+                used_credits: 0.0,
+                used_percent: 0.0,
+                fetched_at: chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+                error: Some("kiro-cli not found. Install it to enable quota tracking.".to_string()),
+            }])
+        }
+    }
 }
 
 // Fetch Claude/Anthropic quota for all authenticated accounts

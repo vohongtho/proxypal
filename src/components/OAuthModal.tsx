@@ -11,7 +11,7 @@ const providerLogos: Record<Provider, string> = {
 	qwen: "/logos/qwen.png",
 	iflow: "/logos/iflow.svg",
 	vertex: "/logos/vertex.svg",
-	kiro: "/logos/kiro.png",
+	kiro: "/logos/kiro.svg",
 	antigravity: "/logos/antigravity.webp",
 };
 
