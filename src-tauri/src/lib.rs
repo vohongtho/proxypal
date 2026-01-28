@@ -5618,10 +5618,13 @@ export AMP_API_KEY="proxypal-local"
                 let is_gpt5_model = m.id.starts_with("gpt-5");
                 // Check if this is a Gemini 3 model (native thinking support)
                 let is_gemini3_model = m.id.starts_with("gemini-3-") && !m.id.contains("image");
+                // Check if this is a Qwen3 or DeepSeek model with thinking support
+                let is_qwen3_thinking = m.id.contains("qwen3") && m.id.contains("thinking");
+                let is_deepseek_thinking = m.id.contains("deepseek") && m.id.contains("thinking");
                 // Use user's configured thinking budget
                 let thinking_budget: u64 = user_thinking_budget;
                 let min_thinking_output: u64 = thinking_budget + 8192;  // thinking + 8K buffer for response
-                let effective_output_limit = if is_thinking_model || is_gemini3_model { 
+                let effective_output_limit = if is_thinking_model || is_gemini3_model || is_qwen3_thinking || is_deepseek_thinking { 
                     std::cmp::max(output_limit, min_thinking_output) 
                 } else { 
                     output_limit 
@@ -5656,13 +5659,13 @@ export AMP_API_KEY="proxypal-local"
                     _ => "high"
                 };
                 
-                if is_thinking_model {
+                if is_thinking_model || is_qwen3_thinking || is_deepseek_thinking {
                     // Enable extended thinking
                     model_config["reasoning"] = serde_json::json!(true);
-                    // Check if this is a Claude thinking model (uses thinking.budgetTokens)
+                    // Check if this is a Claude/Qwen3/DeepSeek thinking model (uses thinking.budgetTokens)
                     // vs OpenAI o-series (uses reasoningEffort)
-                    let is_claude_thinking = m.id.contains("claude") && m.id.ends_with("-thinking");
-                    if is_claude_thinking {
+                    let is_budget_thinking = (m.id.contains("claude") || m.id.contains("qwen3") || m.id.contains("deepseek")) && m.id.contains("thinking");
+                    if is_budget_thinking {
                         // Add variants for gemini-claude-*-thinking models
                         let low_budget = 8192u64;
                         let max_budget = 32768u64;
