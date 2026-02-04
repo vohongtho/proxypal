@@ -290,28 +290,35 @@ jobs:
       - name: Update release body with changelog
         env:
           GH_TOKEN: ${{ github.token }}
+          CHANGELOG: ${{ steps.changelog.outputs.changelog }}
+          SIDECAR_VERSION: ${{ steps.changelog.outputs.sidecar_version }}
         run: |
-          SIDECAR_VERSION="${{ steps.changelog.outputs.sidecar_version }}"
+          # Decode the changelog (it was percent-encoded)
+          DECODED_CHANGELOG=$(echo "$CHANGELOG" | sed 's/%0A/\n/g' | sed 's/%0D//g' | sed 's/%25/%/g')
 
-          # Build release body
-          cat > /tmp/release_body.md << 'RELEASE_EOF'
-          ## What's New
+          # Build release body using printf to avoid HEREDOC issues
+          {
+            echo "## What's New"
+            echo ""
+            echo "$DECODED_CHANGELOG"
+            echo ""
+            echo "## Downloads"
+            echo ""
+            echo "| Platform | Download |"
+            echo "|----------|----------|"
+            echo "| macOS (Apple Silicon) | \`.dmg\` (aarch64) |"
+            echo "| macOS (Intel) | \`.dmg\` (x64) |"
+            echo "| Windows | \`.exe\` installer |"
+            echo "| Windows (Portable) | \`.zip\` (no install required) |"
+            echo "| Linux | \`.deb\` package |"
+            echo ""
+            echo "---"
+            echo "*Bundled sidecar: CLIProxyAPIPlus $SIDECAR_VERSION*"
+          } > /tmp/release_body.md
 
-          ${{ steps.changelog.outputs.changelog }}
-
-          ## Downloads
-
-          | Platform | Download |
-          |----------|----------|
-          | macOS (Apple Silicon) | `.dmg` (aarch64) |
-          | macOS (Intel) | `.dmg` (x64) |
-          | Windows | `.exe` installer |
-          | Windows (Portable) | `.zip` (no install required) |
-          | Linux | `.deb` package |
-
-          ---
-          *Bundled sidecar: CLIProxyAPIPlus $SIDECAR_VERSION*
-          RELEASE_EOF
+          echo "=== Release body ==="
+          cat /tmp/release_body.md
+          echo "===================="
 
           # Update release with new body
           gh release edit "${{ github.ref_name }}" --notes-file /tmp/release_body.md || true
