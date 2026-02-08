@@ -1,6 +1,6 @@
 [package]
 name = "proxypal"
-version = "0.3.109"
+version = "0.3.110"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
