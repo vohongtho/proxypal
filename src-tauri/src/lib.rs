@@ -3740,7 +3740,7 @@ async fn fetch_antigravity_quota() -> Result<Vec<types::AntigravityQuotaResult>,
                                               "claude-opus-4-5" | "claude-opus-4-5-thinking" => "Claude Opus 4.5",
                                               "claude-haiku-4-5" => "Claude Haiku 4.5",
                                               "claude-4-6-sonnet" | "claude-sonnet-4-6" => "Claude Sonnet 4.6",
-                                              "claude-4-6-opus" | "claude-opus-4-6" => "Claude Opus 4.6",
+                                               "claude-4-6-opus" | "claude-opus-4-6" | "claude-opus-4-6-thinking" => "Claude Opus 4.6",
                                               // Imagen
                                               "imagen-3.0-generate-002" | "imagen-3" => "Imagen 3",
                                               // Chat models
