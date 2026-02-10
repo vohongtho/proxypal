@@ -158,6 +158,13 @@ export const AMP_MODEL_SLOTS: AmpModelSlot[] = [
 		fromModel: "claude-opus-4-6",
 		fromLabel: "Claude Opus 4.6",
 	},
+	// GPT-5.2 Codex - used by Deep agent
+	{
+		id: "deep",
+		name: "Deep",
+		fromModel: "gpt-5.2-codex",
+		fromLabel: "GPT-5.2 Codex",
+	},
 	// Claude Sonnet 4.5 - used by Librarian subagent
 	{
 		id: "sonnet-4-5",
@@ -204,6 +211,13 @@ export const AMP_MODEL_SLOTS: AmpModelSlot[] = [
 		name: "Topics",
 		fromModel: "gemini-2.5-flash-lite-preview-09-2025",
 		fromLabel: "Gemini 2.5 Flash-Lite Preview",
+	},
+	// Gemini 3 Pro Image - used by Painter agent
+	{
+		id: "painter",
+		name: "Painter",
+		fromModel: "gemini-3-pro-image-preview",
+		fromLabel: "Gemini 3 Pro Image",
 	},
 ];
 
@@ -732,6 +746,11 @@ export async function testProviderConnection(
 	modelId: string,
 ): Promise<ProviderTestResult> {
 	return invoke("test_provider_connection", { modelId });
+}
+
+/** Test Kiro connection via kiro-cli chat --no-interactive "/usage". */
+export async function testKiroConnection(): Promise<ProviderTestResult> {
+	return invoke("test_kiro_connection");
 }
 
 // ============================================

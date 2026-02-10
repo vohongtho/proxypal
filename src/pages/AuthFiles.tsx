@@ -23,6 +23,7 @@ const providerColors: Record<string, string> = {
 	qwen: "bg-purple-500/20 text-purple-400 border-purple-500/30",
 	iflow: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30",
 	vertex: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+	kiro: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
 	antigravity: "bg-pink-500/20 text-pink-400 border-pink-500/30",
 };
 
@@ -101,10 +102,32 @@ export function AuthFilesPage() {
 	};
 
 	const handleTestConnection = async (file: AuthFile) => {
+		const p = file.provider.toLowerCase();
+
+		// Kiro: test via kiro-cli chat --no-interactive "/usage" instead of proxy
+		if (p.includes("kiro")) {
+			setTestingProvider(file.name);
+			try {
+				const { testKiroConnection } = await import("../lib/tauri");
+				const result = await testKiroConnection();
+				if (result.success) {
+					toastStore.success(
+						`Kiro connection OK${result.latencyMs != null ? ` (${result.latencyMs}ms)` : ""}`,
+					);
+				} else {
+					toastStore.error(`Kiro test failed: ${result.message}`);
+				}
+			} catch (err: unknown) {
+				toastStore.error(`Test failed: ${err}`);
+			} finally {
+				setTestingProvider(null);
+			}
+			return;
+		}
+
 		// Determine a model to test with based on provider
 		// Using ProxyPal's model IDs that map to each provider's auth
 		let modelId: string | null = null;
-		const p = file.provider.toLowerCase();
 		if (p.includes("claude")) modelId = "gemini-claude-sonnet-4-5";
 		else if (p.includes("gemini") || p.includes("vertex"))
 			modelId = "gemini-2.5-flash";

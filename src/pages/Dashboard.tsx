@@ -2582,6 +2582,7 @@ function CodexQuotaWidget(props: { authStatus: { openai: number } }) {
 function KiroQuotaWidget() {
 	const [quotaData, setQuotaData] = createSignal<KiroQuotaResult[]>([]);
 	const [loading, setLoading] = createSignal(false);
+	const [expanded, setExpanded] = createSignal(true);
 
 	const loadQuota = async () => {
 		setLoading(true);
@@ -2600,32 +2601,39 @@ function KiroQuotaWidget() {
 	});
 
 	return (
-		<Show when={quotaData().length > 0}>
-			<div class="p-4 sm:p-6 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm transition-smooth hover:shadow-md">
-				<div class="flex items-center justify-between mb-4">
-					<div class="flex items-center gap-3">
-						<div class="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center">
-							<img src="/logos/kiro.svg" class="w-6 h-6" alt="Kiro" />
-						</div>
-						<div>
-							<h3 class="text-base font-bold text-gray-900 dark:text-gray-100">
-								Kiro Quota
-							</h3>
-							<p class="text-xs text-gray-500 dark:text-gray-400">
-								Agentic AI credits
-							</p>
-						</div>
-					</div>
+		<div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
+			{/* Header - same pattern as Antigravity / Claude Quota */}
+			<div
+				onClick={() => setExpanded(!expanded())}
+				class="w-full flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
+			>
+				<div class="flex items-center gap-2">
+					<img src="/logos/kiro.svg" alt="Kiro" class="w-5 h-5 rounded" />
+					<span class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+						Kiro Quota
+					</span>
+					<Show when={quotaData().length > 0}>
+						<span class="text-xs text-gray-500 dark:text-gray-400">
+							({quotaData().length} account{quotaData().length !== 1 ? "s" : ""})
+						</span>
+					</Show>
+				</div>
+				<div class="flex items-center gap-2">
 					<button
-						onClick={loadQuota}
+						type="button"
+						onClick={(e) => {
+							e.stopPropagation();
+							loadQuota();
+						}}
 						disabled={loading()}
-						class="p-2 text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+						class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50"
+						title="Refresh quota"
 					>
 						<svg
 							class={`w-4 h-4 ${loading() ? "animate-spin" : ""}`}
 							fill="none"
-							viewBox="0 0 24 24"
 							stroke="currentColor"
+							viewBox="0 0 24 24"
 						>
 							<path
 								stroke-linecap="round"
@@ -2635,9 +2643,49 @@ function KiroQuotaWidget() {
 							/>
 						</svg>
 					</button>
+					<svg
+						class={`w-4 h-4 text-gray-400 transition-transform ${expanded() ? "rotate-180" : ""}`}
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M19 9l-7 7-7-7"
+						/>
+					</svg>
 				</div>
+			</div>
 
-				<div class="space-y-4">
+			<Show when={expanded()}>
+				<div class="p-4 space-y-4">
+					<Show when={loading() && quotaData().length === 0}>
+						<div class="flex items-center justify-center py-4 text-gray-500 dark:text-gray-400">
+							<svg
+								class="w-5 h-5 animate-spin mr-2"
+								fill="none"
+								viewBox="0 0 24 24"
+							>
+								<circle
+									class="opacity-25"
+									cx="12"
+									cy="12"
+									r="10"
+									stroke="currentColor"
+									stroke-width="4"
+								/>
+								<path
+									class="opacity-75"
+									fill="currentColor"
+									d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+								/>
+							</svg>
+							Loading quota...
+						</div>
+					</Show>
+
 					<For each={quotaData()}>
 						{(quota) => (
 							<div class="p-4 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700/50">
@@ -2662,7 +2710,7 @@ function KiroQuotaWidget() {
 									fallback={
 										<div class="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
 											<svg
-												class="w-4 h-4"
+												class="w-4 h-4 shrink-0"
 												fill="none"
 												viewBox="0 0 24 24"
 												stroke="currentColor"
@@ -2682,7 +2730,7 @@ function KiroQuotaWidget() {
 								>
 									<div class="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
 										<div
-											class={`h-full bg-brand-500 transition-all duration-300`}
+											class="h-full bg-brand-500 transition-all duration-300"
 											style={{ width: `${quota.usedPercent}%` }}
 										/>
 									</div>
@@ -2690,8 +2738,14 @@ function KiroQuotaWidget() {
 							</div>
 						)}
 					</For>
+
+					<Show when={!loading() && quotaData().length === 0}>
+						<div class="py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+							No Kiro quota data. Install kiro-cli and sign in, or check app.kiro.dev.
+						</div>
+					</Show>
 				</div>
-			</div>
-		</Show>
+			</Show>
+		</div>
 	);
 }

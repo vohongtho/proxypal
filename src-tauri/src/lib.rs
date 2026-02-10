@@ -4761,6 +4761,53 @@ async fn test_openai_provider(base_url: String, api_key: String) -> Result<Provi
     })
 }
 
+/// Test Kiro connection by delegating to `fetch_kiro_quota`.
+/// This runs `kiro-cli chat --no-interactive "/usage"` and interprets the result
+/// as a simple success/failure signal for the UI.
+#[tauri::command]
+async fn test_kiro_connection() -> Result<ProviderTestResult, String> {
+    let start = std::time::Instant::now();
+    let quota_result = fetch_kiro_quota().await;
+    let latency = start.elapsed().as_millis() as u64;
+
+    match quota_result {
+        Ok(results) => {
+            if results.is_empty() {
+                return Ok(ProviderTestResult {
+                    success: false,
+                    message: "No response from kiro-cli /usage".to_string(),
+                    latency_ms: Some(latency),
+                    models_found: None,
+                });
+            }
+
+            let first = &results[0];
+
+            if let Some(err) = &first.error {
+                Ok(ProviderTestResult {
+                    success: false,
+                    message: format!("kiro-cli error: {}", err),
+                    latency_ms: Some(latency),
+                    models_found: None,
+                })
+            } else {
+                Ok(ProviderTestResult {
+                    success: true,
+                    message: format!("Kiro CLI reachable. Plan: {}", first.plan),
+                    latency_ms: Some(latency),
+                    models_found: None,
+                })
+            }
+        }
+        Err(e) => Ok(ProviderTestResult {
+            success: false,
+            message: format!("Failed to run kiro-cli: {}", e),
+            latency_ms: Some(latency),
+            models_found: None,
+        }),
+    }
+}
+
 // Fetch models from all configured OpenAI-compatible providers
 #[tauri::command]
 async fn fetch_openai_compatible_models(state: State<'_, AppState>) -> Result<Vec<types::OpenAICompatibleProviderModels>, String> {
@@ -7913,6 +7960,7 @@ pub fn run() {
             fetch_copilot_quota,
             fetch_claude_quota,
             fetch_kiro_quota,
+            test_kiro_connection,
             import_vertex_credential,
             commands::config::get_config,
             commands::config::save_config,
