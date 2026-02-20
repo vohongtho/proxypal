@@ -3794,6 +3794,40 @@ async fn fetch_antigravity_quota() -> Result<Vec<types::AntigravityQuotaResult>,
     Ok(results)
 }
 
+// Helper: HTTP GET with retry and exponential backoff
+// Retries on: timeout, connection errors, 5xx, 429
+// Does NOT retry on: client errors (4xx except 429)
+async fn fetch_with_retry(
+    client: &reqwest::Client,
+    url: &str,
+    headers: Vec<(&str, String)>,
+    max_retries: u32,
+) -> Result<reqwest::Response, String> {
+    let mut last_err = String::new();
+    for attempt in 0..=max_retries {
+        if attempt > 0 {
+            tokio::time::sleep(std::time::Duration::from_millis(500 * (1 << (attempt - 1)))).await;
+        }
+        let mut req = client.get(url);
+        for (key, value) in &headers {
+            req = req.header(*key, value.as_str());
+        }
+        match req.send().await {
+            Ok(resp) if resp.status().is_server_error() || resp.status().as_u16() == 429 => {
+                last_err = format!("Server error: {}", resp.status());
+                continue;
+            }
+            Ok(resp) => return Ok(resp),
+            Err(e) if e.is_timeout() || e.is_connect() => {
+                last_err = format!("{}", e);
+                continue;
+            }
+            Err(e) => return Err(format!("{}", e)),
+        }
+    }
+    Err(format!("All {} attempts failed, last error: {}", max_retries + 1, last_err))
+}
+
 // Fetch Codex/ChatGPT quota and usage for all authenticated accounts
 // Uses the ChatGPT internal API: https://chatgpt.com/backend-api/wham/usage
 #[tauri::command]
@@ -3801,22 +3835,28 @@ async fn fetch_codex_quota() -> Result<Vec<types::CodexQuotaResult>, String> {
     let home = dirs::home_dir().ok_or("Could not determine home directory")?;
     let auth_dir = home.join(".cli-proxy-api");
     
-    let mut results: Vec<types::CodexQuotaResult> = Vec::new();
-    
     if !auth_dir.exists() {
-        return Ok(results);
+        return Ok(vec![]);
     }
     
     // Find all codex-*.json files
     let entries = std::fs::read_dir(&auth_dir)
         .map_err(|e| format!("Failed to read auth directory: {}", e))?;
     
+    // Phase 1: Collect credentials (sequential, fast I/O)
+    struct CodexCred {
+        email: String,
+        access_token: String,
+        account_id: Option<String>,
+    }
+    let mut credentials: Vec<CodexCred> = Vec::new();
+    let mut error_results: Vec<types::CodexQuotaResult> = Vec::new();
+    
     for entry in entries.flatten() {
         let filename = entry.file_name().to_string_lossy().to_string();
         if filename.starts_with("codex-") && filename.ends_with(".json") {
             let file_path = entry.path();
             
-            // Read and parse the credential file
             let content = match std::fs::read_to_string(&file_path) {
                 Ok(c) => c,
                 Err(e) => {
@@ -3834,10 +3874,16 @@ async fn fetch_codex_quota() -> Result<Vec<types::CodexQuotaResult>, String> {
             };
             
             let email = cred["email"].as_str().unwrap_or("unknown").to_string();
-            let access_token = match cred["access_token"].as_str() {
-                Some(t) => t,
+            match cred["access_token"].as_str() {
+                Some(t) => {
+                    credentials.push(CodexCred {
+                        email,
+                        access_token: t.to_string(),
+                        account_id: cred["account_id"].as_str().map(|s| s.to_string()),
+                    });
+                }
                 None => {
-                    results.push(types::CodexQuotaResult {
+                    error_results.push(types::CodexQuotaResult {
                         account_email: email,
                         plan_type: "unknown".to_string(),
                         primary_used_percent: 0.0,
@@ -3850,45 +3896,38 @@ async fn fetch_codex_quota() -> Result<Vec<types::CodexQuotaResult>, String> {
                         fetched_at: chrono::Local::now().to_rfc3339(),
                         error: Some("No access token found".to_string()),
                     });
-                    continue;
                 }
             };
-            
-            // Get optional account_id for multi-workspace support
-            let account_id = cred["account_id"].as_str();
-            
-            // Fetch usage from ChatGPT internal API
-            let client = reqwest::Client::new();
+        }
+    }
+    
+    // Phase 2: Fetch quotas in parallel with timeout
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .unwrap_or_default();
+    
+    let mut handles = Vec::new();
+    for cred in credentials {
+        let client = client.clone();
+        handles.push(tokio::spawn(async move {
             let url = "https://chatgpt.com/backend-api/wham/usage";
             
-            let mut request = client
-                .get(url)
-                .header("Authorization", format!("Bearer {}", access_token))
-                .header("Accept", "application/json")
-                .header("User-Agent", "ProxyPal");
-            
-            // Add ChatGPT-Account-Id header if available (for multi-workspace support)
-            if let Some(acct_id) = account_id {
-                request = request.header("ChatGPT-Account-Id", acct_id);
+            let mut headers = vec![
+                ("Authorization", format!("Bearer {}", cred.access_token)),
+                ("Accept", "application/json".to_string()),
+                ("User-Agent", "ProxyPal".to_string()),
+            ];
+            if let Some(acct_id) = &cred.account_id {
+                headers.push(("ChatGPT-Account-Id", acct_id.clone()));
             }
             
-            let response = request.send().await;
+            let response = fetch_with_retry(&client, url, headers, 2).await;
             
             match response {
                 Ok(resp) => {
                     if resp.status().is_success() {
                         let body: serde_json::Value = resp.json().await.unwrap_or_default();
-                        
-                        // Parse the ChatGPT usage response
-                        // Expected format:
-                        // {
-                        //   "plan_type": "pro",
-                        //   "rate_limit": {
-                        //     "primary_window": { "used_percent": 42, "reset_at": 1737561600, "limit_window_seconds": 18000 },
-                        //     "secondary_window": { "used_percent": 10, "reset_at": 1737561600, "limit_window_seconds": 604800 }
-                        //   },
-                        //   "credits": { "has_credits": true, "unlimited": false, "balance": 10.50 }
-                        // }
                         
                         let plan_type = body["plan_type"].as_str().unwrap_or("unknown").to_string();
                         
@@ -3906,8 +3945,8 @@ async fn fetch_codex_quota() -> Result<Vec<types::CodexQuotaResult>, String> {
                         let credits_balance = credits["balance"].as_f64();
                         let credits_unlimited = credits["unlimited"].as_bool().unwrap_or(false);
                         
-                        results.push(types::CodexQuotaResult {
-                            account_email: email,
+                        types::CodexQuotaResult {
+                            account_email: cred.email,
                             plan_type,
                             primary_used_percent,
                             primary_reset_at,
@@ -3918,12 +3957,12 @@ async fn fetch_codex_quota() -> Result<Vec<types::CodexQuotaResult>, String> {
                             credits_unlimited,
                             fetched_at: chrono::Local::now().to_rfc3339(),
                             error: None,
-                        });
+                        }
                     } else {
                         let status = resp.status();
                         let error_body = resp.text().await.unwrap_or_default();
-                        results.push(types::CodexQuotaResult {
-                            account_email: email,
+                        types::CodexQuotaResult {
+                            account_email: cred.email,
                             plan_type: "unknown".to_string(),
                             primary_used_percent: 0.0,
                             primary_reset_at: None,
@@ -3934,12 +3973,12 @@ async fn fetch_codex_quota() -> Result<Vec<types::CodexQuotaResult>, String> {
                             credits_unlimited: false,
                             fetched_at: chrono::Local::now().to_rfc3339(),
                             error: Some(format!("API error {}: {}", status, error_body)),
-                        });
+                        }
                     }
                 }
                 Err(e) => {
-                    results.push(types::CodexQuotaResult {
-                        account_email: email,
+                    types::CodexQuotaResult {
+                        account_email: cred.email,
                         plan_type: "unknown".to_string(),
                         primary_used_percent: 0.0,
                         primary_reset_at: None,
@@ -3950,9 +3989,18 @@ async fn fetch_codex_quota() -> Result<Vec<types::CodexQuotaResult>, String> {
                         credits_unlimited: false,
                         fetched_at: chrono::Local::now().to_rfc3339(),
                         error: Some(format!("Request failed: {}", e)),
-                    });
+                    }
                 }
             }
+        }));
+    }
+    
+    // Phase 3: Collect results
+    let mut results = error_results;
+    for handle in handles {
+        match handle.await {
+            Ok(result) => results.push(result),
+            Err(e) => eprintln!("Codex quota task panicked: {}", e),
         }
     }
     
@@ -3968,15 +4016,26 @@ async fn fetch_codex_quota() -> Result<Vec<types::CodexQuotaResult>, String> {
 async fn fetch_copilot_quota() -> Result<Vec<types::CopilotQuotaResult>, String> {
     let home = dirs::home_dir().ok_or("Could not determine home directory")?;
     
-    let mut results: Vec<types::CopilotQuotaResult> = Vec::new();
+    // Phase 1: Collect all tokens (sequential, fast I/O)
+    struct CopilotCred {
+        token: String,
+        login: String,
+    }
+    let mut credentials: Vec<CopilotCred> = Vec::new();
+    let mut error_results: Vec<types::CopilotQuotaResult> = Vec::new();
     
-    // First, check for copilot-api token (plain text file)
+    // Check for copilot-api token (plain text file)
     let copilot_api_token_path = home.join(".local/share/copilot-api/github_token");
     if copilot_api_token_path.exists() {
-        let token = match std::fs::read_to_string(&copilot_api_token_path) {
-            Ok(t) => t.trim().to_string(),
+        match std::fs::read_to_string(&copilot_api_token_path) {
+            Ok(t) => {
+                let token = t.trim().to_string();
+                if !token.is_empty() {
+                    credentials.push(CopilotCred { token, login: "copilot-api".to_string() });
+                }
+            }
             Err(e) => {
-                results.push(types::CopilotQuotaResult {
+                error_results.push(types::CopilotQuotaResult {
                     account_login: "copilot-api".to_string(),
                     plan: "unknown".to_string(),
                     premium_interactions_percent: 0.0,
@@ -3984,18 +4043,11 @@ async fn fetch_copilot_quota() -> Result<Vec<types::CopilotQuotaResult>, String>
                     fetched_at: chrono::Local::now().to_rfc3339(),
                     error: Some(format!("Failed to read token: {}", e)),
                 });
-                return Ok(results);
             }
-        };
-        
-        if !token.is_empty() {
-            // Fetch quota using copilot-api token
-            let result = fetch_copilot_quota_with_token(&token, "copilot-api").await;
-            results.push(result);
         }
     }
     
-    // Also check for cli-proxy-api copilot credentials
+    // Check for cli-proxy-api copilot credentials
     let auth_dir = home.join(".cli-proxy-api");
     if auth_dir.exists() {
         let entries = std::fs::read_dir(&auth_dir)
@@ -4022,10 +4074,26 @@ async fn fetch_copilot_quota() -> Result<Vec<types::CopilotQuotaResult>, String>
                 
                 if let Some(token) = cred["access_token"].as_str()
                     .or_else(|| cred["token"].as_str()) {
-                    let result = fetch_copilot_quota_with_token(token, &login).await;
-                    results.push(result);
+                    credentials.push(CopilotCred { token: token.to_string(), login });
                 }
             }
+        }
+    }
+    
+    // Phase 2: Fetch all quotas in parallel
+    let mut handles = Vec::new();
+    for cred in credentials {
+        handles.push(tokio::spawn(async move {
+            fetch_copilot_quota_with_token(&cred.token, &cred.login).await
+        }));
+    }
+    
+    // Phase 3: Collect results
+    let mut results = error_results;
+    for handle in handles {
+        match handle.await {
+            Ok(result) => results.push(result),
+            Err(e) => eprintln!("Copilot quota task panicked: {}", e),
         }
     }
     
@@ -4034,19 +4102,22 @@ async fn fetch_copilot_quota() -> Result<Vec<types::CopilotQuotaResult>, String>
 
 // Helper function to fetch Copilot quota with a given token
 async fn fetch_copilot_quota_with_token(token: &str, login: &str) -> types::CopilotQuotaResult {
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .unwrap_or_default();
     let url = "https://api.github.com/copilot_internal/user";
     
-    let response = client
-        .get(url)
-        .header("Authorization", format!("token {}", token))
-        .header("Accept", "application/json")
-        .header("User-Agent", "ProxyPal/1.0")
-        .header("Editor-Version", "vscode/1.91.1")
-        .header("Editor-Plugin-Version", "copilot-chat/0.26.7")
-        .header("X-Github-Api-Version", "2025-04-01")
-        .send()
-        .await;
+    let headers = vec![
+        ("Authorization", format!("token {}", token)),
+        ("Accept", "application/json".to_string()),
+        ("User-Agent", "ProxyPal/1.0".to_string()),
+        ("Editor-Version", "vscode/1.91.1".to_string()),
+        ("Editor-Plugin-Version", "copilot-chat/0.26.7".to_string()),
+        ("X-Github-Api-Version", "2025-04-01".to_string()),
+    ];
+    
+    let response = fetch_with_retry(&client, url, headers, 2).await;
     
     match response {
         Ok(resp) => {
@@ -4356,17 +4427,20 @@ async fn fetch_claude_quota() -> Result<Vec<types::quota::ClaudeQuotaResult>, St
         };
         
         // Fetch usage from Anthropic OAuth API
-        let client = reqwest::Client::new();
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(10))
+            .build()
+            .unwrap_or_default();
         let url = "https://api.anthropic.com/api/oauth/usage";
         
-        let response = client
-            .get(url)
-            .header("Authorization", format!("Bearer {}", access_token))
-            .header("Accept", "application/json")
-            .header("User-Agent", "ProxyPal/1.0")
-            .header("anthropic-beta", "oauth-2025-04-20")
-            .send()
-            .await;
+        let headers = vec![
+            ("Authorization", format!("Bearer {}", access_token)),
+            ("Accept", "application/json".to_string()),
+            ("User-Agent", "ProxyPal/1.0".to_string()),
+            ("anthropic-beta", "oauth-2025-04-20".to_string()),
+        ];
+        
+        let response = fetch_with_retry(&client, url, headers, 2).await;
         
         match response {
             Ok(resp) => {

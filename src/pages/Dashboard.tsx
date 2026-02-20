@@ -18,6 +18,7 @@ import { OpenCodeKitBanner } from "../components/OpenCodeKitBanner";
 import { StatusIndicator } from "../components/StatusIndicator";
 import { Button } from "../components/ui";
 import { useI18n } from "../i18n";
+import { getCachedOrFetch } from "../lib/quotaCache";
 import {
 	type AgentConfigResult,
 	type AntigravityQuotaResult,
@@ -1254,11 +1255,15 @@ function QuotaWidget(props: { authStatus: { antigravity: number } }) {
 	);
 	const [filtersExpanded, setFiltersExpanded] = createSignal(false);
 
-	const loadQuota = async () => {
+	const loadQuota = async (forceRefresh = false) => {
 		setLoading(true);
 		setError(null);
 		try {
-			const results = await fetchAntigravityQuota();
+			const results = await getCachedOrFetch(
+				"antigravity",
+				fetchAntigravityQuota,
+				forceRefresh,
+			);
 			setQuotaData(results);
 		} catch (err) {
 			setError(String(err));
@@ -1465,7 +1470,7 @@ function QuotaWidget(props: { authStatus: { antigravity: number } }) {
 					<button
 						onClick={(e) => {
 							e.stopPropagation();
-							loadQuota();
+							loadQuota(true);
 						}}
 						disabled={loading()}
 						class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50"
@@ -1918,11 +1923,15 @@ function CopilotQuotaWidget() {
 	const [error, setError] = createSignal<string | null>(null);
 	const [expanded, setExpanded] = createSignal(false);
 
-	const loadQuota = async () => {
+	const loadQuota = async (forceRefresh = false) => {
 		setLoading(true);
 		setError(null);
 		try {
-			const results = await fetchCopilotQuota();
+			const results = await getCachedOrFetch(
+				"copilot",
+				fetchCopilotQuota,
+				forceRefresh,
+			);
 			setQuotaData(results);
 		} catch (err) {
 			setError(String(err));
@@ -1974,7 +1983,7 @@ function CopilotQuotaWidget() {
 					<button
 						onClick={(e) => {
 							e.stopPropagation();
-							loadQuota();
+							loadQuota(true);
 						}}
 						disabled={loading()}
 						class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50"
@@ -2141,11 +2150,15 @@ function ClaudeQuotaWidget() {
 	const [error, setError] = createSignal<string | null>(null);
 	const [expanded, setExpanded] = createSignal(false);
 
-	const loadQuota = async () => {
+	const loadQuota = async (forceRefresh = false) => {
 		setLoading(true);
 		setError(null);
 		try {
-			const results = await fetchClaudeQuota();
+			const results = await getCachedOrFetch(
+				"claude",
+				fetchClaudeQuota,
+				forceRefresh,
+			);
 			setQuotaData(results);
 		} catch (err) {
 			setError(String(err));
@@ -2210,7 +2223,7 @@ function ClaudeQuotaWidget() {
 					<button
 						onClick={(e) => {
 							e.stopPropagation();
-							loadQuota();
+							loadQuota(true);
 						}}
 						disabled={loading()}
 						class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50"
@@ -2405,11 +2418,15 @@ function CodexQuotaWidget(props: { authStatus: { openai: number } }) {
 	const [error, setError] = createSignal<string | null>(null);
 	const [expanded, setExpanded] = createSignal(false);
 
-	const loadQuota = async () => {
+	const loadQuota = async (forceRefresh = false) => {
 		setLoading(true);
 		setError(null);
 		try {
-			const results = await fetchCodexQuota();
+			const results = await getCachedOrFetch(
+				"codex",
+				fetchCodexQuota,
+				forceRefresh,
+			);
 			setQuotaData(results);
 		} catch (err) {
 			setError(String(err));
@@ -2477,7 +2494,7 @@ function CodexQuotaWidget(props: { authStatus: { openai: number } }) {
 					<button
 						onClick={(e) => {
 							e.stopPropagation();
-							loadQuota();
+							loadQuota(true);
 						}}
 						disabled={loading()}
 						class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50"
@@ -2669,10 +2686,14 @@ function KiroQuotaWidget() {
 	const [loading, setLoading] = createSignal(false);
 	const [expanded, setExpanded] = createSignal(false);
 
-	const loadQuota = async () => {
+	const loadQuota = async (forceRefresh = false) => {
 		setLoading(true);
 		try {
-			const results = await fetchKiroQuota();
+			const results = await getCachedOrFetch(
+				"kiro",
+				fetchKiroQuota,
+				forceRefresh,
+			);
 			setQuotaData(results);
 		} catch (err) {
 			console.error("Failed to fetch Kiro quota:", err);
@@ -2710,7 +2731,7 @@ function KiroQuotaWidget() {
 						type="button"
 						onClick={(e) => {
 							e.stopPropagation();
-							loadQuota();
+							loadQuota(true);
 						}}
 						disabled={loading()}
 						class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50"
