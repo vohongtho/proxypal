@@ -95,7 +95,7 @@ pub async fn get_oauth_url(
     };
 
     // Make HTTP request to get OAuth URL
-    let client = reqwest::Client::new();
+    let client = crate::build_management_client();
     let response = client
         .get(&endpoint)
         .header("X-Management-Key", &crate::get_management_key())
@@ -162,7 +162,7 @@ pub async fn get_device_code(
         _ => return Err(format!("Device code flow not supported for provider: {}", provider)),
     };
 
-    let client = reqwest::Client::new();
+    let client = crate::build_management_client();
     let response = client
         .get(&endpoint)
         .header("X-Management-Key", &crate::get_management_key())
@@ -293,7 +293,7 @@ pub async fn open_oauth(
     };
 
     // Make HTTP request to get OAuth URL
-    let client = reqwest::Client::new();
+    let client = crate::build_management_client();
     let response = client
         .get(&endpoint)
         .header("X-Management-Key", &crate::get_management_key())
@@ -354,7 +354,7 @@ pub async fn poll_oauth_status(
         port, oauth_state
     );
 
-    let client = reqwest::Client::new();
+    let client = crate::build_management_client();
     let response = client
         .get(&endpoint)
         .header("X-Management-Key", &crate::get_management_key())

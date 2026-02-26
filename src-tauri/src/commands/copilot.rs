@@ -26,7 +26,7 @@ pub async fn start_copilot(
     }
     
     // First, check if copilot-api is already running on this port (maybe externally)
-    let client = reqwest::Client::new();
+    let client = crate::build_management_client();
     let health_url = format!("http://127.0.0.1:{}/v1/models", port);
     if let Ok(response) = client
         .get(&health_url)
@@ -249,7 +249,7 @@ pub async fn start_copilot(
     
     // Wait for copilot-api to be ready (up to 8 seconds)
     // bunx/npx may need to download packages on first run, which takes ~5s
-    let client = reqwest::Client::new();
+    let client = crate::build_management_client();
     let health_url = format!("http://127.0.0.1:{}/v1/models", port);
     
     for i in 0..16 {
@@ -299,7 +299,7 @@ pub async fn start_copilot(
     // This runs independently and emits status updates as authentication completes
     let app_handle = app.clone();
     tauri::async_runtime::spawn(async move {
-        let client = reqwest::Client::new();
+        let client = crate::build_management_client();
         let health_url = format!("http://127.0.0.1:{}/v1/models", port);
         
         // Poll for up to 60 seconds to catch slower authentication (especially on first run)
@@ -394,7 +394,7 @@ pub async fn check_copilot_health(state: State<'_, AppState>) -> Result<CopilotS
     let config = state.config.lock().unwrap().clone();
     let port = config.copilot.port;
     
-    let client = reqwest::Client::new();
+    let client = crate::build_management_client();
     let health_url = format!("http://127.0.0.1:{}/v1/models", port);
     
     let (running, authenticated) = match client

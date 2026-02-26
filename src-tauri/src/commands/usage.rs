@@ -676,7 +676,7 @@ pub async fn sync_usage_from_proxy(state: State<'_, AppState>) -> Result<Request
         config.port
     };
 
-    let client = reqwest::Client::new();
+    let client = crate::build_management_client();
     let usage_url = format!("http://127.0.0.1:{}/v0/management/usage", port);
 
     let response = client
@@ -1019,7 +1019,7 @@ pub async fn export_usage_stats(
         config.port
     };
 
-    let client = reqwest::Client::new();
+    let client = crate::build_management_client();
     let export_url = format!("http://127.0.0.1:{}/v0/management/usage/export", port);
 
     let response = client
@@ -1056,7 +1056,7 @@ pub async fn import_usage_stats(
         config.port
     };
 
-    let client = reqwest::Client::new();
+    let client = crate::build_management_client();
     let import_url = format!("http://127.0.0.1:{}/v0/management/usage/import", port);
 
     let response = client

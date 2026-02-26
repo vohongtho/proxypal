@@ -705,7 +705,7 @@ pub async fn start_proxy(
     let port = config.port;
     tokio::spawn(async move {
         tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-        let client = reqwest::Client::new();
+        let client = crate::build_management_client();
         let usage_url = format!("http://127.0.0.1:{}/v0/management/usage", port);
         let _ = client
             .get(&usage_url)

@@ -37,6 +37,7 @@ pub async fn get_available_models(state: State<'_, AppState>) -> Result<Vec<Avai
     let has_copilot = config.copilot.enabled;
     
     let client = reqwest::Client::builder()
+        .no_proxy()
         .timeout(std::time::Duration::from_secs(10))
         .build()
         .map_err(|e| e.to_string())?;
@@ -127,6 +128,7 @@ pub async fn test_provider_connection(
     };
 
     let client = reqwest::Client::builder()
+        .no_proxy()
         .timeout(std::time::Duration::from_secs(30))
         .build()
         .map_err(|e| e.to_string())?;
