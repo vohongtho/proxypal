@@ -103,6 +103,10 @@ export function AuthFilesPage() {
 					provider = "kiro";
 				} else if (filename.includes("antigravity")) {
 					provider = "antigravity";
+				} else if (filename.includes("kimi")) {
+					provider = "kimi";
+				} else if (filename.includes("deepseek")) {
+					provider = "deepseek";
 				}
 
 				await uploadAuthFile(selected, provider);
