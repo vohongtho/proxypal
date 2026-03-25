@@ -168,8 +168,7 @@ export const vi = {
     },
     project: "Dự án",
     proxyNotRunning: "Proxy chưa chạy",
-    startProxyServerDescription:
-      "Khởi động proxy server để quản lý API key qua Management API.",
+    startProxyServerDescription: "Khởi động proxy server để quản lý API key qua Management API.",
     testing: "Đang kiểm tra...",
     title: "API Keys",
     toasts: {
@@ -329,10 +328,10 @@ export const vi = {
       stop: "Dừng",
       stopping: "Đang dừng...",
     },
-    authHelpDescription: "Kiểm tra mã thiết bị trong terminal, sau đó nhấn nút bên dưới để xác thực.",
+    authHelpDescription:
+      "Kiểm tra mã thiết bị trong terminal, sau đó nhấn nút bên dưới để xác thực.",
     availableModelsDescription: "Models khả dụng: GPT-4o, Claude Sonnet 4, Claude Opus 4.5, v.v.",
-    enableHint:
-      "Bật để truy cập GPT-4, Claude và các model khác qua gói đăng ký GitHub Copilot",
+    enableHint: "Bật để truy cập GPT-4, Claude và các model khác qua gói đăng ký GitHub Copilot",
     failedToStartCopilot: "Khởi động Copilot thất bại",
     forMoreDetails: "để biết thêm chi tiết.",
     githubAuthenticationRequired: "Cần xác thực GitHub",
@@ -758,7 +757,8 @@ export const vi = {
       proxyMustBeRunningToConfigureAgents: "Proxy phải đang chạy để cấu hình Agent",
       proxyRestartedWithManagementKey: "Proxy đã khởi động lại với management key mới",
       reasoningEffortUpdated: 'Mức độ suy luận đã cập nhật thành "{{level}}"',
-      reasoningLevelSavedButProxyRestartFailed: "Đã lưu mức suy luận nhưng khởi động lại proxy thất bại",
+      reasoningLevelSavedButProxyRestartFailed:
+        "Đã lưu mức suy luận nhưng khởi động lại proxy thất bại",
       restartingProxyForManagementKey: "Đang khởi động lại proxy để áp dụng management key mới...",
       settingsSaved: "Đã lưu cài đặt",
       settingsSaveFailed: "Lưu cài đặt thất bại",
