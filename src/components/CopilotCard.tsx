@@ -15,7 +15,12 @@ import { toastStore } from "../stores/toast";
 import { Button } from "./ui";
 import { Switch } from "./ui/Switch";
 
-import type { CopilotApiDetection, CopilotAuthInfo, CopilotConfig, CopilotStatus } from "../lib/tauri";
+import type {
+  CopilotApiDetection,
+  CopilotAuthInfo,
+  CopilotConfig,
+  CopilotStatus,
+} from "../lib/tauri";
 
 interface CopilotCardProps {
   config: CopilotConfig;
