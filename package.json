@@ -1,6 +1,6 @@
 {
   "name": "proxypal",
-  "version": "0.4.25",
+  "version": "0.4.26",
   "description": "",
   "license": "MIT",
   "type": "module",
@@ -16,7 +16,7 @@
     "lint:fix": "oxlint -c oxlint.config.mjs --fix .",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "check:ts": "node scripts/check-ts.mjs",
+    "check:ts": "node scripts/check-ts.mjs", 
     "check:parallel": "node scripts/check-parallel.mjs",
     "check": "pnpm tsc --noEmit && pnpm lint && pnpm format:check",
     "update-sidecar": "node scripts/update-sidecar.mjs --force"
